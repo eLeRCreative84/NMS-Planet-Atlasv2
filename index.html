@@ -1138,6 +1138,8 @@ function renderPlanetResourcesPanel() {
         planetDetails[currentPlanet].resources = arr.filter(r => r !== res.name);
       }
 	updatePlanetMiniPanel();
+		// egzekwuj limit po każdej zmianie
+        enforceResourceLimit(grid);
     });
 
     grid.appendChild(checkbox);
@@ -1148,14 +1150,26 @@ function renderPlanetResourcesPanel() {
     nameLabel.style.textAlign = "left";
     grid.appendChild(nameLabel);
   });
+	// sprawdź limit przy pierwszym renderze
+  enforceResourceLimit(grid);
 }
 
+// Funkcja do pilnowania limitu pierwiastków
+function enforceResourceLimit(scopeEl) {
+  const checkboxes = scopeEl.querySelectorAll('input[type="checkbox"][data-resource]');
+  const checked = Array.from(checkboxes).filter(cb => cb.checked);
 
-
-
-
-
-
+  if (checked.length >= 10) {
+    checkboxes.forEach(cb => {
+      if (!cb.checked) cb.disabled = true;
+    });
+  } else {
+    checkboxes.forEach(cb => {
+      // tylko jeśli planeta jest wybrana (żeby zachować Twoją logikę)
+      cb.disabled = !currentPlanet ? true : false;
+    });
+  }
+}
 
 // Mini panel z inofo o planecie
 function updatePlanetMiniPanel() {
