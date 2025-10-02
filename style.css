@@ -395,7 +395,7 @@ button:disabled {
   bottom: 10px;
   left: 10px;
   overflow-y: auto; /* nadmiar przewijany */
-  box-sizing: border-box;  /* żeby padding wliczał się w wysokość */
+  /* box-sizing: border-box;  /* żeby padding wliczał się w wysokość */
   background: rgba(10, 30, 60, 0.9);
   padding: 8px;
   border-radius: 6px;
@@ -482,5 +482,6 @@ button:disabled {
   box-sizing: border-box;
   white-space: pre-line; /* zachowanie enterów */
 }
+
 
 
