@@ -479,24 +479,3 @@ button:disabled {
   box-sizing: border-box;
   white-space: pre-line; /* zachowanie enterów */
 }
-
-/* Przycisk do obracania globu */
-.auto-rotate {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 0.5rem;
-}
-
-.auto-rotate span {
-  white-space: nowrap;
-}
-
-/* nadpisujemy szerokość checkboxa */
-.auto-rotate input[type="checkbox"] {
-  width: auto; /* ważne! */
-  margin: 0;
-}
-
-
-
