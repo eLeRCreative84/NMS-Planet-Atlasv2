@@ -69,11 +69,9 @@
         <button onclick="resetGlobeZoomMultiplier()" style="padding:0.2rem 0.3rem; font-size:12px; width:auto;">Reset</button>
       </div>
       <!-- Autoobrót -->
-      <div style="margin-top: 0.5rem;">
-  <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer;">
-    <input type="checkbox" id="autoRotateCheckbox" onchange="toggleAutoRotate()" />
-    <span>Obracanie globu</span>
-  </label>
+      <div style="margin-top: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 200px;">
+  <span>Obracanie globu</span>
+  <input type="checkbox" id="autoRotateCheckbox" onchange="toggleAutoRotate()" />
 </div>
       <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
       <h2>Import/Eksport</h2>
