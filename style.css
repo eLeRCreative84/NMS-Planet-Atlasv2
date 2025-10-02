@@ -391,10 +391,10 @@ button:disabled {
 /* Minipanel z info o planecie */
 #planetMiniPanel {
   position: absolute;
-  max-height: 50vh; /* max połowa wysokości ekranu */
+  /*max-height: 50vh; /* max połowa wysokości ekranu */
   bottom: 10px;
   left: 10px;
-  overflow-y: auto; /* nadmiar przewijany */
+  /*overflow-y: auto; /* nadmiar przewijany */
   /* box-sizing: border-box;  /* żeby padding wliczał się w wysokość */
   background: rgba(10, 30, 60, 0.9);
   padding: 8px;
@@ -482,6 +482,7 @@ button:disabled {
   box-sizing: border-box;
   white-space: pre-line; /* zachowanie enterów */
 }
+
 
 
 
