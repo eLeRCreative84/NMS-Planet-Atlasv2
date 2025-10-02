@@ -16,6 +16,7 @@
       <button class="lock-while-edit" onclick="openTab('punkty')">Punkty</button>
       <button class="lock-while-edit" onclick="openTab('detale')">Detale planety</button>
     </div>
+
     <!-- Zakładka START -->
     <div id="start" class="tab-content active">
       <div id="noPlanetsMessage" style="color: #ffcc00; font-weight: bold; text-align: center; margin: 0.5rem 0;">
@@ -84,55 +85,82 @@
       <button class="lock-while-edit" onclick="exportAtlas()">Eksport JSON</button>
       <input class="lock-while-edit" type="file" id="importFile" accept="application/json" onchange="importAtlas(event)" />
     </div>
+	
     <!-- Zakładka PLANETY -->
-    <div id="planety" class="tab-content">
-      <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem;">
-        <!-- nazwa planety -->
-        <input type="text" id="newPlanetName" class="lock-while-edit" placeholder="Nazwa nowej planety" oninput="checkNewPlanetInput()" />
-        <!-- label + piker -->
-       	<div style="text-align:center">
-          <label>  Wybierz kolor </label>
-          <input type="color" id="PlanetColor" value="#000000" class="lock-while-edit" style="width:100%; height:40px;">
-        </div>
-        <!-- guzik tworzenia planety -->
-        <button id="addPlanetBtn" class="lock-while-edit" onclick="addNewPlanet()">Stwórz nową planetę</button>
-      </div>
-      <!-- Przycisk dodaj texturę i zmień kolor -->
-      <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem;">
-        <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-        <input type="text" id="planetTextureUrl" class="lock-while-edit" placeholder="URL tekstury" oninput="checkTextureInput()" />
-        <div class="planet-buttons-row">
-          <button id="setTextureBtn" class="lock-while-edit" onclick="addTextureUrl()">Ustaw teksturę</button>
-          <button id="setColorBtn" class="lock-while-edit" onclick="changePlanetColor()">Zmień kolor</button>
-        </div>
-      </div>
-	    <!-- Galeria miniatur -->
-	  	<div id="textureGalleryContainer" class="lock-while-edit">
-  		  <div id="textureGallery"></div>
-  		  <div id="textureGalleryControls">
-  			  <button id="prevTexturePage" onclick="changeTexturePage(-1)">◀</button>
-  		  	<button id="nextTexturePage" onclick="changeTexturePage(1)">▶</button>
-		    </div>
-		  </div>
-      <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-      <div class="planet-buttons-row" style="margin-bottom:1rem;">
-        <button id="editSelectedPlanetBtn" onclick="editSelectedPlanet()" disabled>Zmień nazwę</button>
-        <button id="deleteSelectedPlanetBtn" class="lock-while-edit" onclick="deleteSelectedPlanet()" disabled>Usuń planetę</button>
-      </div>
-      <!-- Ukryty kontener na edycję -->
-      <div id="editPlanetBox" style="display:none; margin-bottom:1rem;">
-        <input type="text" id="editPlanetName" placeholder="Nowa nazwa planety" style="width:100%; margin-bottom:0.5rem;">
-        <div style="display:flex; gap:0.5rem;">
-          <button onclick="acceptEditPlanet()">Akceptuj</button>
-          <button onclick="cancelEditPlanet()">Anuluj</button>
-        </div>
-      </div>
-      <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+<div id="planety" class="tab-content">
 
-		<!-- Pierwiastki planety -->
-		<div id="planet-resources"></div>
-		
+  <!-- Sub-zakładka Szukaj -->
+  <div id="planetSearchTab" style="display:none; border:1px solid #102b56; padding:0.5rem; border-radius:6px; margin-bottom:1rem;">
+    <input type="text" id="planetSearchInput" placeholder="Wpisz nazwę planety..." />
+    <button onclick="searchPlanet()">Szukaj</button>
+    <div id="planetSearchResults" style="margin-top:0.5rem;"></div>
+    <button onclick="backToPlanets()" style="margin-top:0.5rem;">⬅ Powrót</button>
+	<div id="planetList"></div>
+  </div>
+
+  <!-- Główna część zakładki Planety -->
+  <div id="planetMainTab" style="display:block;">
+    <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem;">
+
+      <!-- Przyciski w zakładce Planety -->
+      <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+        <button onclick="showPlanetSearchTab()">🔍 Szukaj</button>
+      </div>
+
+      <!-- nazwa planety -->
+      <input type="text" id="newPlanetName" class="lock-while-edit" placeholder="Nazwa nowej planety" oninput="checkNewPlanetInput()" />
+
+      <!-- label + piker -->
+      <div style="text-align:center">
+        <label>Wybierz kolor</label>
+        <input type="color" id="PlanetColor" value="#000000" class="lock-while-edit" style="width:100%; height:40px;">
+      </div>
+
+      <!-- guzik tworzenia planety -->
+      <button id="addPlanetBtn" class="lock-while-edit" onclick="addNewPlanet()">Stwórz nową planetę</button>
     </div>
+
+    <!-- Przycisk dodaj texturę i zmień kolor -->
+    <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem;">
+      <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+      <input type="text" id="planetTextureUrl" class="lock-while-edit" placeholder="URL tekstury" oninput="checkTextureInput()" />
+      <div class="planet-buttons-row">
+        <button id="setTextureBtn" class="lock-while-edit" onclick="addTextureUrl()">Ustaw teksturę</button>
+        <button id="setColorBtn" class="lock-while-edit" onclick="changePlanetColor()">Zmień kolor</button>
+      </div>
+    </div>
+
+    <!-- Galeria miniatur -->
+    <div id="textureGalleryContainer" class="lock-while-edit">
+      <div id="textureGallery"></div>
+      <div id="textureGalleryControls">
+        <button id="prevTexturePage" onclick="changeTexturePage(-1)">◀</button>
+        <button id="nextTexturePage" onclick="changeTexturePage(1)">▶</button>
+      </div>
+    </div>
+
+    <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+
+    <div class="planet-buttons-row" style="margin-bottom:1rem;">
+      <button id="editSelectedPlanetBtn" onclick="editSelectedPlanet()" disabled>Zmień nazwę</button>
+      <button id="deleteSelectedPlanetBtn" class="lock-while-edit" onclick="deleteSelectedPlanet()" disabled>Usuń planetę</button>
+    </div>
+
+    <!-- Ukryty kontener na edycję -->
+    <div id="editPlanetBox" style="display:none; margin-bottom:1rem;">
+      <input type="text" id="editPlanetName" placeholder="Nowa nazwa planety" style="width:100%; margin-bottom:0.5rem;">
+      <div style="display:flex; gap:0.5rem;">
+        <button onclick="acceptEditPlanet()">Akceptuj</button>
+        <button onclick="cancelEditPlanet()">Anuluj</button>
+      </div>
+    </div>
+
+    <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+
+    <!-- Pierwiastki planety -->
+    <div id="planet-resources"></div>
+  </div>
+</div>
     <!-- Zakładka PUNKTY -->
     <div id="punkty" class="tab-content">
       <div><label>Filtruj</label></div>
@@ -333,15 +361,40 @@ let headerLock = true; // blokada na starcie celem zablokowania możliwości nad
 
 // Zakładki
 function openTab(tabId) {
+  // zawsze chowaj sub-tab wyszukiwania po zmianie zakładki
+  document.getElementById("planetSearchTab").style.display = "none";
+  const planetMain = document.getElementById("planetMainTab");
+  if (planetMain) planetMain.style.display = "block";
+
+  // ukryj wszystkie zakładki
   document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  
+  // usuń active z przycisków
   document.querySelectorAll("#tabs button").forEach(el => el.classList.remove("active"));
+
+  // aktywuj odpowiednią zakładkę
   const tab = document.getElementById(tabId);
-  if(tab) tab.classList.add("active");
-  // oznacz odpowiedni przycisk jako active (przybliżone dopasowanie)
-  document.querySelectorAll("#tabs button").forEach(btn=>{
-    if (btn.getAttribute("onclick") && btn.getAttribute("onclick").includes(`'${tabId}'`)) btn.classList.add("active");
+  if (tab) tab.classList.add("active");
+
+  // zaznacz przycisk zakładki jako active
+  document.querySelectorAll("#tabs button").forEach(btn => {
+    if (btn.getAttribute("onclick") && btn.getAttribute("onclick").includes(`'${tabId}'`)) {
+      btn.classList.add("active");
+    }
   });
-updateCurrentPlanetHeader();
+
+  // odśwież nagłówek planety 
+  updateCurrentPlanetHeader();
+}
+
+function showPlanetSearchTab() {
+  document.getElementById("planetMainTab").style.display = "none";
+  document.getElementById("planetSearchTab").style.display = "block";
+}
+
+function backToPlanets() {
+  document.getElementById("planetSearchTab").style.display = "none";
+  document.getElementById("planetMainTab").style.display = "block";
 }
   
 //zmiana nagłówka z nazwą planety
