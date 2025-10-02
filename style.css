@@ -480,4 +480,16 @@ button:disabled {
   white-space: pre-line; /* zachowanie enterów */
 }
 
+/* Przycisk do obracania globu */
+.auto-rotate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+.auto-rotate span {
+  white-space: nowrap;
+}
+
 
