@@ -465,13 +465,17 @@ button:disabled {
   bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.85);
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  max-width: 80%;
-  text-align: center;
+  width: 20cm;          /* maksymalna szerokość */
+  max-height: 4cm;      /* maksymalna wysokość */
+  overflow-y: auto;     /* przewijanie przy dłuższych notatkach */
+  text-align: left;     /* lepsza czytelność dla dłuższego tekstu */
   font-size: 0.9rem;
   display: none;
   z-index: 20;
+  box-sizing: border-box;
 }
+
