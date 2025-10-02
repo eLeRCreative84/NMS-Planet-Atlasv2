@@ -300,7 +300,8 @@
   <div id="miniPanelSentinels"></div>
 </div>
    
-   
+   <!-- Panel z notatkami punktu -->
+<div id="pointNotesPanel"></div>
    
 </div>
    
@@ -1975,6 +1976,18 @@ const globe = Globe()(document.getElementById("globeViz"))
     }
   });
 
+//Panel z ntotakami punktu	
+const pointNotesPanel = document.getElementById("pointNotesPanel");
+
+globe.onPointHover(point => {
+  if (point && point.notes) {
+    pointNotesPanel.textContent = point.notes;
+    pointNotesPanel.style.display = "block";
+  } else {
+    pointNotesPanel.style.display = "none";
+  }
+});
+	
 // ustawienie punktów dla aktualnej planety
 if (currentPlanet && atlas[currentPlanet]) {
   globe.pointsData(atlas[currentPlanet]);
