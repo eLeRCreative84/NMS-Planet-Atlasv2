@@ -469,13 +469,15 @@ button:disabled {
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  width: 20cm;          /* maksymalna szerokość */
-  max-height: 4cm;      /* maksymalna wysokość */
-  overflow-y: auto;     /* przewijanie przy dłuższych notatkach */
-  text-align: left;     /* lepsza czytelność dla dłuższego tekstu */
+  width: 20cm;        
+  height: 4cm;        /* SZTYWNA wysokość */
+  overflow-y: hidden; /* ukrywamy scrollbar, przewijamy w JS */
+  text-align: left;
   font-size: 0.9rem;
   display: none;
   z-index: 20;
   box-sizing: border-box;
+  white-space: pre-line; /* zachowanie enterów */
 }
+
 
