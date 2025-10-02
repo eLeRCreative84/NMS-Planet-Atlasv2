@@ -1383,17 +1383,26 @@ function refreshPointsList() {
 
         // Checkbox dla extracted/visited
         if (point.type === "Zasób" || ["Inne", "Ruiny", "Struktura"].includes(point.type)) {
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.checked = point.type === "Zasób" ? !!point.extracted : !!point.visited;
-            checkbox.onchange = () => {
-                if (point.type === "Zasób") point.extracted = checkbox.checked;
-                else point.visited = checkbox.checked;
-                refreshGlobePoints();
-                refreshPointsList();
-            };
-            btnDiv.appendChild(checkbox);
-        }
+	    const checkbox = document.createElement("input");
+	    checkbox.type = "checkbox";
+	    // ustawienie początkowego stanu
+	    checkbox.checked = point.type === "Zasób" ? !!point.extracted : !!point.visited;
+	
+	    // ustawienie początkowego tooltipa
+	    checkbox.title = checkbox.checked ? "Wydobyty / Odwiedzony" : "Niewydobyty / Nieodwiedzony";
+	
+	    checkbox.onchange = () => {
+	        if (point.type === "Zasób") point.extracted = checkbox.checked;
+	        else point.visited = checkbox.checked;
+	
+	        // aktualizacja tooltipa po zmianie stanu
+	        checkbox.title = checkbox.checked ? "Wydobyty / Odwiedzony" : "Niewydobyty / Nieodwiedzony";
+	
+	        refreshGlobePoints();
+	        refreshPointsList();
+	    };
+	    btnDiv.appendChild(checkbox);
+	}
 
         // Edycja punktu
         const editBtn = document.createElement("button");
