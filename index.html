@@ -69,10 +69,10 @@
         <button onclick="resetGlobeZoomMultiplier()" style="padding:0.2rem 0.3rem; font-size:12px; width:auto;">Reset</button>
       </div>
       <!-- Autoobrót -->
-      <div style="margin-top: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 200px;">
-  <span>Obracanie globu</span>
-  <input type="checkbox" id="autoRotateCheckbox" onchange="toggleAutoRotate()" />
-</div>
+      <div class="auto-rotate">
+		  <span>Obracanie globu</span>
+		  <input type="checkbox" id="autoRotateCheckbox" onchange="toggleAutoRotate()" />
+	  </div>
       <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
       <h2>Import/Eksport</h2>
       <button class="lock-while-edit" onclick="exportAtlas()">Eksport JSON</button>
