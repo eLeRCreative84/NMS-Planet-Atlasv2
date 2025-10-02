@@ -1159,13 +1159,13 @@ function enforceResourceLimit(scopeEl) {
   const checkboxes = scopeEl.querySelectorAll('input[type="checkbox"][data-resource]');
   const checked = Array.from(checkboxes).filter(cb => cb.checked);
 
-  if (checked.length >= 10) {
+  if (checked.length >= 12) {
     checkboxes.forEach(cb => {
       if (!cb.checked) cb.disabled = true;
     });
   } else {
     checkboxes.forEach(cb => {
-      // tylko jeśli planeta jest wybrana (żeby zachować Twoją logikę)
+      // tylko jeśli planeta jest wybrana (żeby zachować logikę)
       cb.disabled = !currentPlanet ? true : false;
     });
   }
