@@ -884,41 +884,26 @@ function refreshPlanetList() {
   if (!list) return;
 
   list.innerHTML = "";
-  const grouped = getGroupedPlanets();
 
-  const frag = document.createDocumentFragment();
+    (planetData || []).forEach(planet => {
+    const li = document.createElement("li");
+    li.textContent = planet.name || "Nieznana planeta"; 
+    li.style.cursor = "pointer";
+    
+    // obsługa kliknięcia w planetę
+    li.onclick = () => {
+      currentPlanet = planet.name;
+      updateCurrentPlanetHeader();
+      loadPlanetDetails();
+      updateSelectedPlanetButtons();
+    };
 
-  grouped.forEach(starGroup => {
-    const starHeader = document.createElement("h2");
-    starHeader.textContent = starGroup.starSystem === "Nieznany"
-  ? "Nieznany układ gwiezdny"
-  : starGroup.starSystem;
-    starHeader.style.color = starGroup.starSystem === "Nieznany" ? "#aaa" : "#ffcc00";
-    frag.appendChild(starHeader);
-
-   starGroup.planetSystems.forEach(planetSystem => {
-      const header = document.createElement("h3");
-      header.textContent = planetSystem.name === "Nieznany"
-        ? "Nieznany układ planetarny"
-        : planetSystem.name;
-      header.style.color = planetSystem.name === "Nieznany" ? "#aaa" : "#ffcc00";
-
-      // WYŚRODKUJ tylko jeśli to "Nieznany układ planetarny"
-      if (planetSystem.name === "Nieznany") {
-        header.style.textAlign = "center";
-      }
-
-      frag.appendChild(header);
-
-      planetSystem.planets.forEach(p => {
-        frag.appendChild(renderPlanetRow(p));
-      });
-    });
+    list.appendChild(li);
   });
 
-  list.appendChild(frag);
   updateNoPlanetsMessage();
 }
+
 
 // Tworzy pojedynczy wiersz
 function renderPlanetRow(p) {
