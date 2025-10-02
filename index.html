@@ -1139,7 +1139,7 @@ function renderPlanetResourcesPanel() {
       }
 	updatePlanetMiniPanel();
 		// egzekwuj limit po każdej zmianie
-       // enforceResourceLimit(grid);
+        enforceResourceLimit(grid);
     });
 
     grid.appendChild(checkbox);
@@ -1151,7 +1151,7 @@ function renderPlanetResourcesPanel() {
     grid.appendChild(nameLabel);
   });
 	// sprawdź limit przy pierwszym renderze
- // enforceResourceLimit(grid);
+  enforceResourceLimit(grid);
 }
 
 // Funkcja do pilnowania limitu pierwiastków
