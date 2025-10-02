@@ -492,4 +492,11 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* nadpisujemy szerokość checkboxa */
+.auto-rotate input[type="checkbox"] {
+  width: auto; /* ważne! */
+  margin: 0;
+}
+
+
 
