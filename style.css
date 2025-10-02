@@ -391,6 +391,7 @@ button:disabled {
 /* Minipanel z info o planecie */
 #planetMiniPanel {
   position: absolute;
+  max-height: 50vh;
   bottom: 10px;
   left: 10px;
   background: rgba(10, 30, 60, 0.9);
@@ -479,3 +480,4 @@ button:disabled {
   box-sizing: border-box;
   white-space: pre-line; /* zachowanie enterów */
 }
+
