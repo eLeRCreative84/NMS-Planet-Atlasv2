@@ -469,7 +469,8 @@ button:disabled {
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  width: 20cm;        
+  width: 90%;       /* dynamiczna szerokość (90% okna) */
+  max-width: 20cm;  /* maksymalnie 20cm */          
   height: 4cm;        /* SZTYWNA wysokość */
   overflow-y: hidden; /* ukrywamy scrollbar, przewijamy w JS */
   text-align: left;
@@ -479,6 +480,7 @@ button:disabled {
   box-sizing: border-box;
   white-space: pre-line; /* zachowanie enterów */
 }
+
 
 
 
