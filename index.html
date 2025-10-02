@@ -1978,11 +1978,32 @@ const globe = Globe()(document.getElementById("globeViz"))
 
 //Panel z ntotakami punktu	
 const pointNotesPanel = document.getElementById("pointNotesPanel");
+let autoScrollInterval = null;
+let autoScrollTimeout = null;
 
 globe.onPointHover(point => {
+  clearInterval(autoScrollInterval);
+  clearTimeout(autoScrollTimeout);
+  pointNotesPanel.scrollTop = 0; // zawsze start od góry
+
   if (point && point.notes) {
     pointNotesPanel.textContent = point.notes;
     pointNotesPanel.style.display = "block";
+
+    // po 15 sekundach zaczynamy przewijanie w dół
+    autoScrollTimeout = setTimeout(() => {
+      autoScrollInterval = setInterval(() => {
+        if (
+          pointNotesPanel.scrollTop + pointNotesPanel.clientHeight <
+          pointNotesPanel.scrollHeight
+        ) {
+          pointNotesPanel.scrollTop += 1; // przewijamy 1px
+        } else {
+          clearInterval(autoScrollInterval); // zatrzymaj na końcu
+        }
+      }, 50); // prędkość scrolla (ms)
+    }, 15000); // start po 15 sekundach
+
   } else {
     pointNotesPanel.style.display = "none";
   }
