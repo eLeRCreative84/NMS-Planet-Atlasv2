@@ -385,7 +385,16 @@ button:disabled {
   text-align: center;
   z-index: 2;
   border-bottom: 2px solid #102b56;
+}
 
+#planetSidebar h5 {
+  text-align: center;
+  background: #1976d2;
+  color: white;
+  padding: 5px;
+  font-size: 0.9rem;
+  margin: 0.8rem 0 0.4rem;
+  border-radius: 4px;
 }
 
 /* Minipanel z info o planecie */
@@ -480,6 +489,7 @@ button:disabled {
   box-sizing: border-box;
   white-space: pre-line; /* zachowanie enterów */
 }
+
 
 
 
