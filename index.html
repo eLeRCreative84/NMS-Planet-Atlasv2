@@ -720,11 +720,23 @@ function refreshGalaxySidebar() {
     li.textContent = g;
     li.style.cursor = "pointer";
 
+    // podświetlenie wybranej galaktyki
+        if (g === currentGalaxy) {
+          li.style.fontWeight = "bold";
+          li.style.color = "#1976d2";
+        }
+
     li.onclick = () => {
       currentGalaxy = g;          // ustawiamy globalną zmienną
       refreshPlanetSidebar();     // odśwież listę planet dla tej galaktyki
-    };
+      refreshGalaxySidebar();
 
+      // ustaw input galaktyki w szczegółach planety (jeśli jest aktywna planeta)
+      const galaxyInput = document.getElementById("galaxyInput");
+      if (galaxyInput) {
+        galaxyInput.value = currentGalaxy;
+      }
+     };
     galaxyList.appendChild(li);
   });
 }
