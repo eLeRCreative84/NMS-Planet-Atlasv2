@@ -948,17 +948,32 @@ function refreshPlanetList() {
 
   list.innerHTML = "";
 
-    (planetData || []).forEach(planet => {
+  (planetData || []).forEach(planet => {
     const li = document.createElement("li");
     li.textContent = planet.name || "Nieznana planeta"; 
     li.style.cursor = "pointer";
-    
+
+    // podświetlenie wybranej planety (tak samo jak w sidebarze)
+    if (planet.name === currentPlanet) {
+      li.style.fontWeight = "bold";
+      li.style.color = "#1976d2";
+    }
+
     // obsługa kliknięcia w planetę
     li.onclick = () => {
       currentPlanet = planet.name;
+
+      // ustaw odpowiednią galaktykę
+      currentGalaxy = planetDetails[currentPlanet]?.galaxy || null;
+
       updateCurrentPlanetHeader();
       loadPlanetDetails();
       updateSelectedPlanetButtons();
+
+      // odśwież wszystko, żeby synchronizować podświetlenia
+      refreshPlanetList();     // zaznaczenie w tej liście
+      refreshPlanetSidebar();  // zaznaczenie w sidebarze
+      refreshGalaxySidebar();  // podświetlenie galaktyki
     };
 
     list.appendChild(li);
