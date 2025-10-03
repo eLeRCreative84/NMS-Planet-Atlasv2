@@ -557,15 +557,15 @@ function refreshPlanetSidebar() {
 
     if (!hasPlanetsInGalaxy) return; // pomiń układ gwiezdny, jeśli w tej galaktyce brak planet
 
-    // nagłówek układu gwiezdnego
-    const starHeader = document.createElement("h3");
-    starHeader.textContent = starGroup.starSystem === "Nieznany"
+   // nagłówek układu gwiezdnego
+const starHeader = document.createElement("h5");
+starHeader.textContent = starGroup.starSystem === "Nieznany"
   ? "Nieznany układ gwiezdny"
   : starGroup.starSystem;
-	starHeader.style.fontSize = "0.9rem";
-    starHeader.style.margin = "0.8rem 0 0.4rem";
-    starHeader.style.color = starGroup.starSystem === "Nieznany" ? "#aaa" : "#ffcc00";
-    listContainer.appendChild(starHeader);
+
+starHeader.style.color = starGroup.starSystem === "Nieznany" ? "#aaa" : "#ffcc00";
+
+listContainer.appendChild(starHeader);
 
     // teraz iteracja po systemach planetarnych wewnątrz tego układu gwiezdnego
     starGroup.planetSystems.forEach(planetSystem => {
