@@ -112,14 +112,19 @@
 
 <!-- guzik tworzenia planety -->
       <button id="addPlanetBtn" class="lock-while-edit" onclick="addNewPlanet()">Stwórz nową planetę</button>
-      <button id="generatePlanetNameBtn" onclick="generatePlanetName()" style="flex:1;"> Generuj nazwę </button>
-		
-		<label style="display:flex; align-items:center; gap:5px; margin-top:5px;">
-  <input type="checkbox" id="isMoonCheckbox">
-  <span>Twórz jako księżyc</span>
-</label>
-		
-    </div>
+	  
+	  <table style="width: 100%; margin-top: 0.5rem; border-collapse: collapse;">
+		  <tr>
+		    <td style="width: 70%; text-align: left;">
+		      Twórz jako księżyc
+		    </td>
+		    <td style="width: 30%; text-align: left;">
+		      <input type="checkbox" id="isMoonCheckbox" />
+		    </td>
+		  </tr>
+		</table>
+	    <button id="generatePlanetNameBtn" onclick="generatePlanetName()" style="flex:1;"> Generuj nazwę </button>
+     </div>
 
       <!-- label + piker -->
       <div style="text-align:center">
@@ -454,8 +459,25 @@ function loadPlanetDetails(){
     currentGalaxy = details.galaxy || currentGalaxy;
   }
 
-  document.getElementById("detailStarSystem").value = details.starSystem || "";
-  document.getElementById("detailPlanetSystem").value = details.planetSystem || "";
+  const starSystemEl = document.getElementById("detailStarSystem");
+  const planetSystemEl = document.getElementById("detailPlanetSystem");
+
+  starSystemEl.value = details.starSystem || "";
+  planetSystemEl.value = details.planetSystem || "";
+
+  // jeśli to księżyc – blokujemy edycję pól układów
+  if (details.parentPlanetId) {
+    starSystemEl.disabled = true;
+    planetSystemEl.disabled = true;
+    starSystemEl.style.backgroundColor = "#f0f0f0"; // wyszarzenie
+    planetSystemEl.style.backgroundColor = "#f0f0f0";
+  } else {
+    starSystemEl.disabled = false;
+    planetSystemEl.disabled = false;
+    starSystemEl.style.backgroundColor = "";
+    planetSystemEl.style.backgroundColor = "";
+  }
+  
   document.getElementById("detailBiome").value = details.biome || "";
   document.getElementById("detailWeather").value = details.weather || "";
   document.getElementById("detailSentinels").value = details.sentinels || "";
@@ -526,6 +548,17 @@ function savePlanetDetails(){
  
  // synchronizuj globalną zmienną (opcjonalne, ale wygodne)
   currentGalaxy = galaxyVal;
+
+	// automatyczne nadpisanie układów dla księżyców
+	  Object.keys(planetDetails).forEach(name => {
+		const moon = planetDetails[name];
+		if (moon.parentPlanetId === currentPlanet) {
+		  moon.galaxy = galaxyVal;
+		  moon.starSystem = starSystemVal;
+		  moon.planetSystem = planetSystemVal || "Nieznany";
+		}
+	  });
+
 
   alert("Opis zapisany!");
   refreshPlanetList();
@@ -599,8 +632,9 @@ listContainer.appendChild(starHeader);
 		
 		listContainer.appendChild(header);
 
-      // planety w systemie (już przefiltrowane)
-      planetsInGalaxy.forEach(planetName => {
+      // tylko planety główne (nie księżyce)
+		const mainPlanets = planetsInGalaxy.filter(p => !planetDetails[p].parentPlanetId);
+		mainPlanets.forEach(planetName => {
         const li = document.createElement("li");
         li.style.cursor = "pointer";
         li.style.padding = "2px 0";
@@ -628,35 +662,39 @@ listContainer.appendChild(starHeader);
         };
 
         listContainer.appendChild(li);
-		  
-     // Render księżyców pod planetą
-    const moons = Object.keys(planetDetails).filter(m => planetDetails[m].parentPlanetId === planetName);
-moons.forEach(moonName => {
-  const moonLi = document.createElement("li");
-  moonLi.textContent = moonName;
-  moonLi.style.fontSize = "0.8rem"; // mniejsza czcionka
-  moonLi.style.marginLeft = "1rem"; // wcięcie
-  moonLi.style.fontStyle = "italic";
-  moonLi.style.cursor = "pointer";
+		
+		const moons = Object.keys(planetDetails).filter(m => planetDetails[m].parentPlanetId === planetName);
+			moons.forEach(moonName => {
+			  const moonLi = document.createElement("li");
+			  moonLi.textContent = moonName;
+			  moonLi.style.fontSize = "0.8rem"; // mniejsza czcionka
+			  moonLi.style.marginLeft = "1rem"; // wcięcie
+			  moonLi.style.fontStyle = "italic";
+			  moonLi.style.cursor = "pointer";
+				// podświetlenie
+				  if (moonName === currentPlanet) {
+					moonLi.style.fontWeight = "bold";
+					moonLi.style.color = "#1976d2"; // ciemnoniebieski
+				  }
+			  moonLi.onclick = () => {
+				currentPlanet = moonName;
+				updateCurrentPlanetHeader();
+				addPoles(moonName);
+				refreshGlobePoints();
+				globe.htmlElementsData(atlas[moonName].filter(pt => pt.type === "Pole"));
+				refreshPointsList();
+				selectPlanet(moonName);
+				updateSelectedPlanetButtons();
+				refreshPlanetSidebar();
+				loadPlanetDetails();
+				renderPlanetResourcesPanel();
+				updatePlanetMiniPanel();
+			  };
 
-  moonLi.onclick = () => {
-    currentPlanet = moonName;
-    updateCurrentPlanetHeader();
-    addPoles(moonName);
-    refreshGlobePoints();
-    globe.htmlElementsData(atlas[moonName].filter(pt => pt.type === "Pole"));
-    refreshPointsList();
-    selectPlanet(moonName);
-    updateSelectedPlanetButtons();
-    refreshPlanetSidebar();
-    loadPlanetDetails();
-    renderPlanetResourcesPanel();
-    updatePlanetMiniPanel();
-  };
+			  listContainer.appendChild(moonLi);
+			});
 
-  listContainer.appendChild(moonLi);
-});
-        }
+		
       });
     });
   });
@@ -837,7 +875,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
- 
+
 ////////////////////////////////////////////////////////////////////
 //------------------ Planety, lista, tworzenie -------------------//
 //////////////////////////////////////////////////////////////////// 
@@ -872,28 +910,36 @@ function addNewPlanet() {
   const name = input.value.trim();
   if (!name) return;
 
+  const isMoonCheckbox = document.getElementById("isMoonCheckbox");
+  const isMoon = isMoonCheckbox.checked;
+
   if (atlas[name]) {
-    alert("Planeta/Ksiezyc o tej nazwie już istnieje!");
+    alert("Planeta / Księżyc o tej nazwie już istnieje!");
     return;
   }
+
+  if (isMoon && !currentPlanet) {
+    alert("Najpierw wybierz planetę, aby dodać księżyc!");
+    return;
+  }
+
+  const parentPlanet = isMoon ? currentPlanet : null;
 
   // wybór koloru
   const colorHex = document.getElementById("PlanetColor").value || "#000000";
   const textureBase64 = hexToBase64Texture(colorHex);
-	
-  const isMoon = document.getElementById("isMoonCheckbox").checked;
-  const parentPlanet = isMoon ? currentPlanet : null;	
-  
+
+  // Dodajemy do atlasu
   atlas[name] = [];
   addPoles(name);
-  
+
   // Dodaj pustą strukturę detali od razu:
   planetDetails[name] = {
     galaxy: currentGalaxy,
     starSystem: isMoon ? planetDetails[parentPlanet]?.starSystem || "" : "",
     planetSystem: isMoon ? planetDetails[parentPlanet]?.planetSystem || "" : "",
     resources: [],
-	biome: "",
+    biome: "",
     weather: "",
     sentinels: "",
     flora: "",
@@ -903,9 +949,9 @@ function addNewPlanet() {
     updated: "",
     coords: "",
     notes: "",
-	parentPlanetId: parentPlanet || null
-	  
+    parentPlanetId: parentPlanet || null
   };
+
   // Dodanie nowego wpisu do planetData
   planetData.push({
     name: name,
@@ -913,23 +959,25 @@ function addNewPlanet() {
     extraInfo: {}, // miejsce na dodatkowe, niestandardowe dane planety
     createdAt: Date.now() //automatycznie zapisany czas dodania planety
   });
-  currentPlanet = name;
+
+	if (!isMoon) currentPlanet = name; // jeśli księżyc – nie zmieniamy currentPlanet
+
   updateCurrentPlanetHeader();
   refreshPlanetList();
   refreshPointsList();
   refreshGlobePoints();
   updateSelectedPlanetButtons();
   refreshPlanetSidebar();
-	renderPlanetResourcesPanel();
-	updatePlanetMiniPanel();
-  
-    // Ustaw od razu glob na wybraną teksturę
+  renderPlanetResourcesPanel();
+  updatePlanetMiniPanel();
+
+  // Ustaw od razu glob na wybraną teksturę
   globe.globeImageUrl(textureBase64);
-  
-    input.value = "";
+
+  input.value = "";
   checkNewPlanetInput();
   alert(`Dodano nowy obiekt: ${isMoon ? "Księżyc" : "Planetę"} - ${name}`);
-  updateNoPlanetsMessage()
+  updateNoPlanetsMessage();
 }
   
 // Lista planet
@@ -981,6 +1029,7 @@ function getGroupedPlanets() {
 }
 
 // Renderuje nagłówki i planety.
+  
 function refreshPlanetList() {
   const list = document.getElementById("planetList");
   if (!list) return;
@@ -1440,6 +1489,17 @@ function toggleMiniPanel() {
 
 // Podłącz przycisk
 document.getElementById("toggleMiniPanelBtn").addEventListener("click", toggleMiniPanel);
+
+
+
+
+
+
+
+
+
+
+
 
 ////////////////////////////////////////////////////////////////////
 //--------------- Punkty, lista, tworzenie, edycja ---------------//
@@ -2204,6 +2264,22 @@ document.querySelectorAll(".extraFilter").forEach(cb => {
         refreshGlobePoints();
     });
 });
+
+	//Nasłuchuje stan Checkboxa księżyca i zmienia nazwę przycisku "Stwórz"
+	document.addEventListener("DOMContentLoaded", () => {
+	  const isMoonCheckbox = document.getElementById("isMoonCheckbox");
+	  const addPlanetBtn = document.getElementById("addPlanetBtn"); // Twój przycisk "Stwórz nową planetę"
+
+	  if (isMoonCheckbox && addPlanetBtn) {
+		// Na start ustaw właściwy tekst
+		addPlanetBtn.textContent = isMoonCheckbox.checked ? "Stwórz nowy księżyc" : "Stwórz nową planetę";
+
+		// Nasłuchiwanie na zmianę checkboxa
+		isMoonCheckbox.addEventListener("change", () => {
+		  addPlanetBtn.textContent = isMoonCheckbox.checked ? "Stwórz nowy księżyc" : "Stwórz nową planetę";
+		});
+	  }
+	});
 
   //Nasłuchiwacz dla sortowania
   const sortSelect = document.getElementById("sortPoints");
