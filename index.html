@@ -113,7 +113,12 @@
 <!-- guzik tworzenia planety -->
       <button id="addPlanetBtn" class="lock-while-edit" onclick="addNewPlanet()">Stwórz nową planetę</button>
       <button id="generatePlanetNameBtn" onclick="generatePlanetName()" style="flex:1;"> Generuj nazwę </button>
-		<button id="addMoonBtn">Dodaj księżyc</button>
+		
+		<label style="display:flex; align-items:center; gap:5px; margin-top:5px;">
+  <input type="checkbox" id="isMoonCheckbox">
+  <span>Twórz jako księżyc</span>
+</label>
+		
     </div>
 
       <!-- label + piker -->
@@ -626,32 +631,31 @@ listContainer.appendChild(starHeader);
 		  
      // Render księżyców pod planetą
     const moons = Object.keys(planetDetails).filter(m => planetDetails[m].parentPlanetId === planetName);
-    if (moons.length) {
-      moons.forEach(moonName => {
-        const moonLi = document.createElement("li");
-        moonLi.textContent = moonName;
-        moonLi.style.fontSize = "0.8rem"; // mniejsza czcionka
-        moonLi.style.marginLeft = "1rem"; // wcięcie
-        moonLi.style.fontStyle = "italic"; // dodatkowe wyróżnienie
-        moonLi.style.cursor = "pointer";
+moons.forEach(moonName => {
+  const moonLi = document.createElement("li");
+  moonLi.textContent = moonName;
+  moonLi.style.fontSize = "0.8rem"; // mniejsza czcionka
+  moonLi.style.marginLeft = "1rem"; // wcięcie
+  moonLi.style.fontStyle = "italic";
+  moonLi.style.cursor = "pointer";
 
-        moonLi.onclick = () => {
-          currentPlanet = moonName;
-          updateCurrentPlanetHeader();
-          addPoles(moonName);
-          refreshGlobePoints();
-          globe.htmlElementsData(atlas[moonName].filter(pt => pt.type === "Pole"));
-          refreshPointsList();
-          selectPlanet(moonName);
-          updateSelectedPlanetButtons();
-          refreshPlanetSidebar();
-          loadPlanetDetails();
-          renderPlanetResourcesPanel();
-          updatePlanetMiniPanel();
-        };
+  moonLi.onclick = () => {
+    currentPlanet = moonName;
+    updateCurrentPlanetHeader();
+    addPoles(moonName);
+    refreshGlobePoints();
+    globe.htmlElementsData(atlas[moonName].filter(pt => pt.type === "Pole"));
+    refreshPointsList();
+    selectPlanet(moonName);
+    updateSelectedPlanetButtons();
+    refreshPlanetSidebar();
+    loadPlanetDetails();
+    renderPlanetResourcesPanel();
+    updatePlanetMiniPanel();
+  };
 
-        listContainer.appendChild(moonLi);
-        });
+  listContainer.appendChild(moonLi);
+});
         }
       });
     });
@@ -869,13 +873,16 @@ function addNewPlanet() {
   if (!name) return;
 
   if (atlas[name]) {
-    alert("Planeta już istnieje!");
+    alert("Planeta/Ksiezyc o tej nazwie już istnieje!");
     return;
   }
 
   // wybór koloru
   const colorHex = document.getElementById("PlanetColor").value || "#000000";
   const textureBase64 = hexToBase64Texture(colorHex);
+	
+  const isMoon = document.getElementById("isMoonCheckbox").checked;
+  const parentPlanet = isMoon ? currentPlanet : null;	
   
   atlas[name] = [];
   addPoles(name);
@@ -883,8 +890,8 @@ function addNewPlanet() {
   // Dodaj pustą strukturę detali od razu:
   planetDetails[name] = {
     galaxy: currentGalaxy,
-    starSystem: "",
-    planetSystem: "",
+    starSystem: isMoon ? planetDetails[parentPlanet]?.starSystem || "" : "",
+    planetSystem: isMoon ? planetDetails[parentPlanet]?.planetSystem || "" : "",
     resources: [],
 	biome: "",
     weather: "",
@@ -896,7 +903,7 @@ function addNewPlanet() {
     updated: "",
     coords: "",
     notes: "",
-	parentPlanetId: parentName
+	parentPlanetId: parentPlanet || null
 	  
   };
   // Dodanie nowego wpisu do planetData
@@ -921,7 +928,7 @@ function addNewPlanet() {
   
     input.value = "";
   checkNewPlanetInput();
-  alert(`Dodano nową planetę: ${name}`);
+  alert(`Dodano nowy obiekt: ${isMoon ? "Księżyc" : "Planetę"} - ${name}`);
   updateNoPlanetsMessage()
 }
   
@@ -973,54 +980,6 @@ function getGroupedPlanets() {
   });
 }
 
-function addMoonToCurrentPlanet() {
-  if (!currentPlanet) return alert("Najpierw wybierz planetę!");
-  
-  const moonName = prompt("Podaj nazwę księżyca:");
-  if (!moonName) return;
-
-  if (atlas[moonName]) {
-    alert("Obiekt o tej nazwie już istnieje!");
-    return;
-  }
-
-  const parent = planetDetails[currentPlanet];
-  if (!parent) return;
-
-  // Dodajemy do atlasu (możemy użyć tej samej mechaniki co dla planety)
-  atlas[moonName] = [];
-  addPoles(moonName);
-
-  // Tworzymy detale księżyca
-  planetDetails[moonName] = {
-    galaxy: parent.galaxy,
-    starSystem: parent.starSystem,
-    planetSystem: parent.planetSystem,
-    biome: "",
-    weather: "",
-    sentinels: "",
-    flora: "",
-    fauna: "",
-    discovered: "",
-    mode: "",
-    updated: "",
-    coords: "",
-    notes: "",
-    resources: [],
-    parentPlanetId: currentPlanet
-  };
-
-  planetData.push({
-    name: moonName,
-    texture: hexToBase64Texture("#888888"), // ciemniejszy kolor dla księżyca
-    extraInfo: {},
-    createdAt: Date.now()
-  });
-
-  refreshPlanetSidebar();
-  alert(`Dodano księżyc "${moonName}" dla planety "${currentPlanet}"`);
-}
-	
 // Renderuje nagłówki i planety.
 function refreshPlanetList() {
   const list = document.getElementById("planetList");
@@ -1481,9 +1440,6 @@ function toggleMiniPanel() {
 
 // Podłącz przycisk
 document.getElementById("toggleMiniPanelBtn").addEventListener("click", toggleMiniPanel);
-
-// Podłącz przycisk księżyc
-document.getElementById("addMoonBtn").addEventListener("click", addMoonToCurrentPlanet);
 
 ////////////////////////////////////////////////////////////////////
 //--------------- Punkty, lista, tworzenie, edycja ---------------//
