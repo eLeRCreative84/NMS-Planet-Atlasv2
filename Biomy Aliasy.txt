@@ -1,0 +1,14 @@
+const biomeAliases = {
+  "Bujny": "Deszczowy, Bujny, Tropikalny, Zielonkawy, Rajsky, Umiarkowana, Wilgotny, Porośnięty, Kwitnący, Trawiasty, Obfity",
+  "Jałowy": "Jałowy, Pustynny, Skalisty, Ponury, Wyschnięty, Opustoszały, Pylisty, Bezkresny, Smagany wiatrem",
+  "Martwy": "Katastrofa Terraformacji, Martwy, Pusty, Pustkowie, Bez życia, Porzucony, Niezdatny do życia, Niska atmosfera, Bezatmosferyczny, Opuszczony",
+  "Egzotyczny": "Szczelinowy, Świetlny, Przerwany, Trzaskający, Kolczasty, Szkieletowy, Bulgoczący, Pieniący się, Pianisty, Profilowany, Kablowy, Sieciowy, Mechaniczny, Metaliczny, Metalurgiczny, Sześciokątny, Płytowy, Łuskowy, Grzybowy, Zarodnikowy, Płetwiasty, Ostrzowy, Pokryty skorupami, Nakryty czapką, Kostniejący, Skamieniały, Kolumnowy, Rozszczepiony, Filarski, Zmiażdżony, Pęknięty, Fragmentaryczny, Zwapniały, Karmazynowy, Anomalia Planetarna, Niesprawny, Zainfekowany, [ZASTRZEŻONE], Szklany, Spragniony, Skazany, Wymazany, Tymczasowy, Uszkodzony",
+  "Mega Egzotyczny": "Karmazynowy, Anomalia Planetarna 1, Anomalia Planetarna 1, Anomalia Planetarna 1, Zaginiona Zieleń, Zaginiony Błękit, Zaginiona Czerwień, [ZASTRZEŻONE] - Czerwony biom, [ZASTRZEŻONE] - Zielony biom, [ZASTRZEŻONE] - Niebieski biom, Chromatyczna Korupcję Gwiezdną 1, Wykryto Korupcję Gwiezdną 1, Wykryto Korupcję Gwiezdną 1, Chromatyczna Mgła, Chromatyczna Mgła, Chromatyczna Mgła, Złośliwa Anomalia 1, Surowa Niebieska Planeta 1, Czerwonawy Glob 1, Toksyczna Anomalia 1, Zamarznięta Anomalia 1, Szkarłatny, Skazany Szmaragd, Azur, Krew, Nawiedzony Emeril, Cerulean, Ciemnoczerwone Wino, Śmiertelna Zielona Anomalia 1, Ultramaryna",
+  "Spalony": "Zwęglony, Suchy, Spalony, Gorący, Ognisty, Wrzący, Wysoka Temperatura, Parujący, Rozżarzony, Poparzeniowy",
+  "Zamrożony": "Zamarznięty, Pokryty Lodem, Arktyczny, Lodowcowy, Ponizej Zera, Lodowy, Mroźny, Lodowaty, Zimowy, Hiperborejski",
+  "Toksyczny": "Toksyczny, Trujący, Szkodliwy, Korozyjny, Kwasowy, Żrący, Ostry, Zniszczony, Miasmatyczny, Rozkładający się",
+  "Napromieniowany": "Napromieniowany, Radioaktywny, Skażony, Nuklearny, Izotopowy, Rozkładający się Nuklearnie, Wysokogamowy, Źródło Wysokiego Promieniowania, Nadkrytyczny, Wysokoenergetyczny",
+  "Bagno": "Bagienny, Moczarowy, Egzotyczny, Mglisty, Zamglony, Błotnisty, Nieskończone Bagno, Grzęzawisko, Lekko Zamglony, Pochmurny, Parowy, Odorem, Mętny, Przemoczony",
+  "Wulkaniczny": "Lawa, Magma, Wybuchowy, Wulkaniczny, Pokryty Popiołem, Popielaty, Tektoniczny, Niestabilny, Burzliwy, Roztopiony, Rozżarzony, Nadchodząca Detonacja Jądra, Obsydianowy, Bazaltowy",
+  "Gazowy Gigant": "Gazowy Gigant"
+};
