@@ -89,14 +89,43 @@
     <!-- Zakładka PLANETY -->
 <div id="planety" class="tab-content">
 
-  <!-- Sub-zakładka Szukaj -->
-  <div id="planetSearchTab" style="display:none; border:1px solid #102b56; padding:0.5rem; border-radius:6px; margin-bottom:1rem;">
-    <input type="text" id="planetSearchInput" placeholder="Wpisz nazwę planety..." />
-    <button onclick="searchPlanet()">Szukaj</button>
-    <div id="planetSearchResults" style="margin-top:0.5rem;"></div>
-    <button onclick="backToPlanets()" style="margin-top:0.5rem;">⬅ Powrót</button>
-	<div id="planetList"></div>
+<!-- Sub-zakładka Szukaj -->
+<div id="planetSearchTab">
+  <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+    <input type="text" id="planetSearchInput" placeholder="Nazwa planety..." oninput="refreshPlanetList()" />
+    <select id="biomeFilter" onchange="refreshPlanetList()"></select>
+    <select id="biomeAliasFilter" onchange="refreshPlanetList()"></select>
+    <select id="resourceFilter" onchange="refreshPlanetList()">
+      <option value="">Wszystkie pierwiastki</option>
+      <option value="Miedź">Miedź</option>
+      <option value="Kadm">Kadm</option>
+      <option value="Emeril">Emeril</option>
+      <option value="Ind">Ind</option>
+      <option value="Kwarcyt">Kwarcyt</option>
+      <option value="Metal chromatyczny">Metal chromatyczny</option>
+      <option value="Parafin">Parafin</option>
+      <option value="Piryt">Piryt</option>
+      <option value="Amoniak">Amoniak</option>
+      <option value="Uran">Uran</option>
+      <option value="Dioksyt">Dioksyt</option>
+      <option value="Fosfor">Fosfor</option>
+      <option value="Bazalt">Bazalt</option>
+      <option value="Skrystalizowany hel">Skrystalizowany hel</option>
+      <option value="Lit">Lit</option>
+      <option value="Kobalt">Kobalt</option>
+      <option value="Srebro">Srebro</option>
+      <option value="Złoto">Złoto</option>
+      <option value="Namagnesowany ferryt">Namagnesowany ferryt</option>
+      <option value="Sód">Sód</option>
+      <option value="Sól">Sól</option>
+      <option value="Zardzewiały metal">Zardzewiały metal</option>
+    </select>
+ 
   </div>
+  <div id="planetList"></div>
+</div>
+
+
 
   <!-- Główna część zakładki Planety -->
   <div id="planetMainTab" style="display:block;">
@@ -417,6 +446,7 @@ function showPlanetSearchTab() {
 function backToPlanets() {
   document.getElementById("planetSearchTab").style.display = "none";
   document.getElementById("planetMainTab").style.display = "block";
+  refreshPlanetList();
 }
   
 //zmiana nagłówka z nazwą planety
@@ -1118,40 +1148,124 @@ function refreshPlanetList() {
 
   list.innerHTML = "";
 
-  (planetData || []).forEach(planet => {
+  const searchInput = document.getElementById("planetSearchInput");
+  const biomeFilter = document.getElementById("biomeFilter");
+  const aliasFilter = document.getElementById("biomeAliasFilter");
+  const resourceFilter = document.getElementById("resourceFilter");
+
+  const query = (searchInput?.value || "").trim().toLowerCase();
+  const selectedBiome = biomeFilter?.value || "";
+  const selectedAlias = aliasFilter?.value || "";
+  const selectedResource = resourceFilter?.value || "";
+
+  //Filtrujemy planety wg czterech kryteriów
+  const filtered = (planetData || []).filter(planet => {
+    const name = planet.name?.toLowerCase() || "";
+    const details = planetDetails[planet.name] || {};
+    const biome = (details.biome || "").toLowerCase();
+    const biomeAlias = (details.biomeAlias || "").toLowerCase();
+    const resources = (details.resources || []).map(r => r.toLowerCase());
+
+    const nameMatch = !query || name.includes(query);
+    const biomeMatch = !selectedBiome || biome === selectedBiome.toLowerCase();
+    const aliasMatch = !selectedAlias || biomeAlias === selectedAlias.toLowerCase();
+    const resourceMatch = !selectedResource || resources.includes(selectedResource.toLowerCase());
+
+    return nameMatch && biomeMatch && aliasMatch && resourceMatch;
+  });
+
+  //Wyświetlenie wyników
+  if (filtered.length === 0) {
+    const noResults = document.createElement("p");
+    noResults.textContent = "Nie znaleziono żadnych planet.";
+    list.appendChild(noResults);
+    return;
+  }
+
+  filtered.forEach(planet => {
     const li = document.createElement("li");
-    li.textContent = planet.name || "Nieznana planeta"; 
+    li.textContent = planet.name || "Nieznana planeta";
     li.style.cursor = "pointer";
 
-    // podświetlenie wybranej planety (tak samo jak w sidebarze)
     if (planet.name === currentPlanet) {
       li.style.fontWeight = "bold";
       li.style.color = "#1976d2";
     }
 
-    // obsługa kliknięcia w planetę
     li.onclick = () => {
       currentPlanet = planet.name;
-
-      // ustaw odpowiednią galaktykę
       currentGalaxy = planetDetails[currentPlanet]?.galaxy || null;
 
       updateCurrentPlanetHeader();
       loadPlanetDetails();
       updateSelectedPlanetButtons();
+      refreshPlanetSidebar();
+      refreshGalaxySidebar();
 
-      // odśwież wszystko, żeby synchronizować podświetlenia
-      refreshPlanetList();     // zaznaczenie w tej liście
-      refreshPlanetSidebar();  // zaznaczenie w sidebarze
-      refreshGalaxySidebar();  // podświetlenie galaktyki
+      // odśwież zaznaczenie
+      refreshPlanetList();
     };
 
     list.appendChild(li);
   });
-
-  updateNoPlanetsMessage();
 }
 
+function clearFilters() {
+  document.getElementById("planetSearchInput").value = "";
+  document.getElementById("biomeFilter").value = "";
+  document.getElementById("biomeAliasFilter").value = "";
+  document.getElementById("resourceFilter").value = "";
+  refreshPlanetList();
+}
+
+function initPlanetFilters() {
+  const biomeSelect = document.getElementById("biomeFilter");
+  const aliasSelect = document.getElementById("biomeAliasFilter");
+  const resourceSelect = document.getElementById("resourceFilter");
+  const nameInput = document.getElementById("planetSearchInput"); // poprawione ID
+
+  if (!biomeSelect || !aliasSelect || !resourceSelect) return;
+
+  // Biomy + aliasy z obiektu biomeAliases
+  biomeSelect.innerHTML = `<option value="">Wszystkie biomy</option>`;
+  aliasSelect.innerHTML = `<option value="">Wszystkie aliasy biomów</option>`;
+
+  Object.entries(biomeAliases).forEach(([biome, aliasesStr]) => {
+    const biomeOpt = document.createElement("option");
+    biomeOpt.value = biome;
+    biomeOpt.textContent = biome;
+    biomeSelect.appendChild(biomeOpt);
+
+    aliasesStr.split(",").map(a => a.trim()).forEach(alias => {
+      const aliasOpt = document.createElement("option");
+      aliasOpt.value = alias;
+      aliasOpt.textContent = `${alias} (${biome})`;
+      aliasSelect.appendChild(aliasOpt);
+    });
+  });
+
+  // Pierwiastki z globalnej listy icons
+  resourceSelect.innerHTML = `<option value="">️Wszystkie pierwiastki</option>`;
+  if (icons && icons.length) {
+    icons.forEach(icon => {
+      const opt = document.createElement("option");
+      opt.value = icon.name;
+      opt.textContent = icon.name;
+      resourceSelect.appendChild(opt);
+    });
+  }
+
+  // Reakcja na zmianę filtrów
+  [biomeSelect, aliasSelect, resourceSelect, nameInput].forEach(el => {
+    if (el) el.addEventListener("input", refreshPlanetList);
+  });
+}
+
+// Uruchamiamy po załadowaniu DOM
+document.addEventListener("DOMContentLoaded", () => {
+  initPlanetFilters();
+  refreshPlanetList(); // od razu wyświetlamy listę planet
+});
 
 // Tworzy pojedynczy wiersz
 function renderPlanetRow(p) {
@@ -1578,16 +1692,6 @@ function toggleMiniPanel() {
 
 // Podłącz przycisk
 document.getElementById("toggleMiniPanelBtn").addEventListener("click", toggleMiniPanel);
-
-
-
-
-
-
-
-
-
-
 
 
 ////////////////////////////////////////////////////////////////////
@@ -2394,6 +2498,8 @@ window.onload = () => {
   updateNoPlanetsMessage();
   checkNewPlanetInput();
   updateCurrentPlanetHeader();
+  initPlanetFilters();
+  
 }
   
 </script>
