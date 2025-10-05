@@ -113,18 +113,22 @@
 <!-- guzik tworzenia planety -->
       <button id="addPlanetBtn" class="lock-while-edit" onclick="addNewPlanet()">Stwórz nową planetę</button>
 	  
-	  <table style="width: 100%; margin-top: 0.5rem; border-collapse: collapse;">
-		  <tr>
-		    <td style="width: 70%; text-align: left;">
-		      Twórz jako księżyc
-		    </td>
-		    <td style="width: 30%; text-align: left;">
-		      <input type="checkbox" id="isMoonCheckbox" />
-		    </td>
+	  <table style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 0;">
+		  <tr style="margin:0; padding:0;">
+			<td style="width: 70%; text-align: left; padding: 0; margin: 0; line-height: 1;">
+			  Twórz jako księżyc
+			</td>
+			<td style="width: 30%; text-align: left; padding: 0; margin: 0;">
+			  <input type="checkbox" id="isMoonCheckbox" style="margin:0;" />
+			</td>
 		  </tr>
 		</table>
-	    <button id="generatePlanetNameBtn" onclick="generatePlanetName()" style="flex:1;"> Generuj nazwę </button>
-     </div>
+	  
+      <button id="generatePlanetNameBtn" onclick="generatePlanetName()" style="flex:1;"> Generuj nazwę </button>
+	  
+	  
+	  
+    </div>
 
       <!-- label + piker -->
       <div style="text-align:center">
@@ -216,22 +220,32 @@
 	    </div>
 	  <label>Układ gwiezdy</label><input type="text" id="detailStarSystem" />
       <label>Układ planetarny</label><input type="text" id="detailPlanetSystem" />
-      <label>Biom</label>
-      <select id="detailBiome">
-        <option value="">-- wybierz --</option>
-        <option>Bujna</option>
-        <option>Jałowa</option>
-        <option>Martwa</option>
-        <option>Egzotyczna</option>
-        <option>Mega Egzotyczna</option>
-        <option>Spalona</option>
-        <option>Zamrożona</option>
-        <option>Toksyczna</option>
-        <option>Napromieniowana</option>
-        <option>Bagno</option>
-        <option>Wulkaniczna</option>
-        <option>Gazowy Gigant</option>
-      </select>
+     
+	 
+	 <label for="detailBiome">Biom:</label>
+<select id="detailBiome" onchange="updateBiomeAlias()">
+  <option value="">-- Wybierz biom --</option>
+  <option value="Bujny">Bujny</option>
+  <option value="Jałowy">Jałowy</option>
+  <option value="Martwy">Martwy</option>
+  <option value="Egzotyczny">Egzotyczny</option>
+  <option value="Mega Egzotyczny">Mega Egzotyczny</option>
+  <option value="Spalony">Spalony</option>
+  <option value="Zamrożony">Zamrożony</option>
+  <option value="Toksyczny">Toksyczny</option>
+  <option value="Napromieniowany">Napromieniowany</option>
+  <option value="Bagno">Bagno</option>
+  <option value="Wulkaniczny">Wulkaniczny</option>
+  <option value="Gazowy Gigant">Gazowy Gigant</option>
+</select>
+
+<label for="detailBiomeAlias" style="margin-top:0.5rem; display:block;">Alternatywna nazwa biomu:</label>
+<select id="detailBiomeAlias">
+  <option value="">-- Wybierz alternatywną nazwę --</option>
+</select>
+	 
+	 
+	 
       <label>Pogoda</label>
       <select id="detailWeather">
         <option value="">-- wybierz --</option>
@@ -478,7 +492,9 @@ function loadPlanetDetails(){
     planetSystemEl.style.backgroundColor = "";
   }
   
-  document.getElementById("detailBiome").value = details.biome || "";
+   document.getElementById("detailBiome").value = details.biome || "";
+  updateBiomeAlias();
+  document.getElementById("detailBiomeAlias").value = details.biomeAlias || "";
   document.getElementById("detailWeather").value = details.weather || "";
   document.getElementById("detailSentinels").value = details.sentinels || "";
   document.getElementById("detailFlora").value = details.flora || "";
@@ -525,15 +541,32 @@ function savePlanetDetails(){
     alert("Wprowadź nazwę układu planetarnego aby poprawnie wyświetlić planetę na liście!");
     return;
   }
-
+    //Sprawdza, czy w ogóle istnieje wpis w planetDetails dla aktualnej planety/księżyca.
+    //Jeśli istnieje — przypisuje jego dane do existing.
+    //Jeśli nie istnieje (np. nowo utworzony obiekt jeszcze nie ma zapisanych detali) — tworzy pusty obiekt {} jako „bezpieczny fallback”.
+       const existing = planetDetails[currentPlanet] || {};
+	
+	const biome = document.getElementById("detailBiome").value;
+	const biomeAlias = document.getElementById("detailBiomeAlias").value;
 	// zachowaj istniejące resources jeśli są
-  const existingResources = planetDetails[currentPlanet]?.resources || [];
+      const existingResources = planetDetails[currentPlanet]?.resources || [];
+
+	// 🔒 Zachowujemy typ obiektu (czy to księżyc, czy planeta)
+	  const isMoon = existing.isMoon || false;
+	  const parentPlanet = existing.parentPlanet || null;
+	  const system = existing.system || null;
+	  const starSystem = existing.starSystem || null;
+
+
+
+
 
   planetDetails[currentPlanet] = {
     galaxy: galaxyVal,
     starSystem: starSystemVal,
     planetSystem: planetSystemVal || "Nieznany", // jeśli brak – ląduje w „Nieznany”
-    biome: document.getElementById("detailBiome").value,
+    biome: biome,
+    biomeAlias: biomeAlias,
     weather: document.getElementById("detailWeather").value,
     sentinels: document.getElementById("detailSentinels").value,
     flora: document.getElementById("detailFlora").value,
@@ -543,7 +576,11 @@ function savePlanetDetails(){
     updated: document.getElementById("detailUpdated").value,
     coords: document.getElementById("detailCoords").value,
     notes: document.getElementById("detailNotes").value,
-	resources: existingResources
+	resources: existingResources,
+	
+	// przywrócenie identyfikatora rodzica i flagi księżyca
+	parentPlanetId: existing.parentPlanetId || null,
+	isMoon: !!existing.parentPlanetId
   };
  
  // synchronizuj globalną zmienną (opcjonalne, ale wygodne)
@@ -770,6 +807,40 @@ function generatePlanetName() {
   document.getElementById("newPlanetName").value = name;
   checkNewPlanetInput();
 }
+
+const biomeAliases = {
+  "Bujny": "Deszczowy, Bujny, Tropikalny, Zielonkawy, Rajsky, Umiarkowana, Wilgotny, Porośnięty, Kwitnący, Trawiasty, Obfity",
+  "Jałowy": "Jałowy, Pustynny, Skalisty, Ponury, Wyschnięty, Opustoszały, Pylisty, Bezkresny, Smagany wiatrem",
+  "Martwy": "Katastrofa Terraformacji, Martwy, Pusty, Pustkowie, Bez życia, Porzucony, Niezdatny do życia, Niska atmosfera, Bezatmosferyczny, Opuszczony",
+  "Egzotyczny": "Szczelinowy, Świetlny, Przerwany, Trzaskający, Kolczasty, Szkieletowy, Bulgoczący, Pieniący się, Pienisty, Profilowany, Okablowany, Sieciowy, Mechaniczny, Metaliczny, Metalurgiczny, Sześciokątny, Płytowy, Łuskowy, Grzybowy, Zarodnikowy, Płetwowy, Ostrzowy, Pokryty skorupami, Zasklepiony, Kostniejący, Skamieniały, Słupowy, Rozszczepiony, Kolumnowy, Zmiażdżony, Pęknięty, Fragmentaryczny, Zwapniały, Karmazynowy, Anomalia Planetarna, Niesprawny, Zainfekowany, [ZASTRZEŻONE], Szklany, Spragniony, Skazany, Wymazany, Tymczasowy, Uszkodzony",
+  "Mega Egzotyczny": "Karmazynowy, Anomalia Planetarna - Czerwony biom, Anomalia Planetarna - Zielony biom, Anomalia Planetarna - Niebieski biom, Zaginiona Zieleń, Zaginiony Błękit, Zaginiona Czerwień, [ZASTRZEŻONE] - Czerwony biom, [ZASTRZEŻONE] - Zielony biom, [ZASTRZEŻONE] - Niebieski biom, Wykryto Korupcję Gwiezdną - Czerwony biom, Wykryto Korupcję Gwiezdną - Zielony biom, Wykryto Korupcję Gwiezdną - Niebieski biom, Chromatyczna Mgła - Czerwony biom, Chromatyczna Mgła - Zielony biom, Chromatyczna Mgła - Nieibeski biom, Złośliwa Anomalia, Surowa Niebieska Planeta, Czerwonawy Glob, Toksyczna Anomalia, Zamarznięta Anomalia, Szkarłatny, Skazany Szmaragd, Azur, Krew, Nawiedzony Emeril, Cerulean, Ciemnoczerwone Wino, Śmiertelna Zielona Anomalia, Ultramaryna",
+  "Spalony": "Zwęglony, Suchy, Spalony, Gorący, Ognisty, Wrzący, Wysoka Temperatura, Parujący, Rozżarzony, Poparzeniowy",
+  "Zamrożony": "Zamarznięty, Pokryty Lodem, Arktyczny, Lodowcowy, Ponizej Zera, Lodowy, Mroźny, Lodowaty, Zimowy, Hiperborejski",
+  "Toksyczny": "Toksyczny, Trujący, Szkodliwy, Korozyjny, Kwasowy, Żrący, Ostry, Zniszczony, Miasmatyczny, Rozkładający się",
+  "Napromieniowany": "Napromieniowany, Radioaktywny, Skażony, Nuklearny, Izotopowy, Rozkładający się Nuklearnie, Wysokogamowy, Źródło Wysokiego Promieniowania, Nadkrytyczny, Wysokoenergetyczny",
+  "Bagno": "Bagienny, Moczarowy, Egzotyczny, Mglisty, Zamglony, Błotnisty, Nieskończone Bagno, Grzęzawisko, Lekko Zamglony, Pochmurny, Parowy, Odorem, Mętny, Przemoczony",
+  "Wulkaniczny": "Lawa, Magma, Wybuchowy, Wulkaniczny, Pokryty Popiołem, Popielaty, Tektoniczny, Niestabilny, Burzliwy, Roztopiony, Rozżarzony, Nadchodząca Detonacja Jądra, Obsydianowy, Bazaltowy",
+  "Gazowy Gigant": "Gazowy Gigant"
+};
+
+// Aktualizacja alternatywnych nazw
+function updateBiomeAlias() {
+  const biomeSelect = document.getElementById("detailBiome");
+  const aliasSelect = document.getElementById("detailBiomeAlias");
+  const biome = biomeSelect.value;
+
+  aliasSelect.innerHTML = '<option value="">-- Wybierz alternatywną nazwę --</option>';
+
+  if (biome && biomeAliases[biome]) {
+    biomeAliases[biome].split(',').forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name.trim();
+      opt.textContent = name.trim();
+      aliasSelect.appendChild(opt);
+    });
+  }
+}
+
 
 
 ////////////////////////////////////////////////////////////////////
