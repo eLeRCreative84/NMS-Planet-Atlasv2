@@ -125,9 +125,7 @@
 		</table>
 	  
       <button id="generatePlanetNameBtn" onclick="generatePlanetName()" style="flex:1;"> Generuj nazwę </button>
-	  
-	  
-	  
+	  	  
     </div>
 
       <!-- label + piker -->
@@ -243,9 +241,7 @@
 <select id="detailBiomeAlias">
   <option value="">-- Wybierz alternatywną nazwę --</option>
 </select>
-	 
-	 
-	 
+	 	 
       <label>Pogoda</label>
       <select id="detailWeather">
         <option value="">-- wybierz --</option>
@@ -515,7 +511,6 @@ function loadPlanetDetails(){
     });
   }
 }
-
 
 function savePlanetDetails(){
   if(!currentPlanet) return;
@@ -1035,7 +1030,8 @@ function addNewPlanet() {
     updated: "",
     coords: "",
     notes: "",
-    parentPlanetId: parentPlanet || null
+    parentPlanetId: parentPlanet,
+    isMoon: !!parentPlanet
   };
 
   // Dodanie nowego wpisu do planetData
