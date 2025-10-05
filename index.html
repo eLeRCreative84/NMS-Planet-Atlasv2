@@ -843,6 +843,7 @@ function updateBiomeAlias() {
 
 
 
+
 ////////////////////////////////////////////////////////////////////
 //------------------- Sidebar galaktyk ----------------------------//
 ////////////////////////////////////////////////////////////////////
@@ -1465,16 +1466,15 @@ const contentEls = panel.querySelectorAll("div:not(:first-child)");
   const FONT_SIZE = "18px"; // x2 (wcześniej ~9px)
  
 	// === BIOM (ikona + tekst) ===
-  const biomeRow = document.createElement("div");
+   const biomeRow = document.createElement("div");
   biomeRow.style.display = "flex";
   biomeRow.style.alignItems = "center";
-  biomeRow.style.gap = "2px";
-	
+  biomeRow.style.gap = "5px";
+
   const biomeIcon = icons.find(i => i.type === "UI" && i.name === "Planet");
   if (biomeIcon) {
     const img = document.createElement("img");
     img.src = biomeIcon.icon;
-    img.alt = "Biom";
     img.style.width = ICON_SIZE + "px";
     img.style.height = ICON_SIZE + "px";
     biomeRow.appendChild(img);
@@ -1483,6 +1483,14 @@ const contentEls = panel.querySelectorAll("div:not(:first-child)");
   const biomeText = document.createElement("span");
   biomeText.textContent = details.biome || "Nieznany biom";
   biomeRow.appendChild(biomeText);
+
+  if (details.biomeAlias) {
+    const aliasText = document.createElement("span");
+    aliasText.textContent = `(${details.biomeAlias})`;
+    aliasText.style.fontStyle = "italic";
+    aliasText.style.color = "#555";
+    biomeRow.appendChild(aliasText);
+  }
 
   panel.appendChild(biomeRow);
 
