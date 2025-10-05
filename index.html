@@ -985,17 +985,31 @@ function addNewPlanet() {
   const isMoonCheckbox = document.getElementById("isMoonCheckbox");
   const isMoon = isMoonCheckbox.checked;
 
-  if (atlas[name]) {
+ if (atlas[name]) {
     alert("Planeta / Księżyc o tej nazwie już istnieje!");
     return;
   }
 
-  if (isMoon && !currentPlanet) {
-    alert("Najpierw wybierz planetę, aby dodać księżyc!");
-    return;
-  }
+  let parentPlanet = null;
 
-  const parentPlanet = isMoon ? currentPlanet : null;
+  if (isMoon) {
+    // przypadek 1: mamy wybraną planetę — OK
+    if (currentPlanet && !planetDetails[currentPlanet]?.parentPlanetId) {
+      parentPlanet = currentPlanet;
+    }
+    // przypadek 2: mamy wybranego księżyca — przypisz nowy do planety-rodzica
+    else if (currentPlanet && planetDetails[currentPlanet]?.parentPlanetId) {
+      parentPlanet = planetDetails[currentPlanet].parentPlanetId;
+      alert(
+        `Wybrany obiekt to księżyc — nowy księżyc zostanie przypisany do planety "${parentPlanet}".`
+      );
+    }
+    // przypadek 3: nie wybrano nic
+    else {
+      alert("Wybierz planetę, do której chcesz przypisać nowy księżyc!");
+      return;
+    }
+  }
 
   // wybór koloru
   const colorHex = document.getElementById("PlanetColor").value || "#000000";
