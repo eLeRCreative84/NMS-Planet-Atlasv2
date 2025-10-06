@@ -183,6 +183,13 @@ const translations = {
   "detail_portal_btn": "Przejdź do NMS Portals",
   "detail_notes_label": "Notatki",
   "detail_save_btn": "Zapisz detale",
+
+planet_noSelected: "Brak wybranej planety",
+    alert_enterPlanetSystem: "Wprowadź nazwę układu planetarnego aby poprawnie wyświetlić planetę na liście!",
+    alert_savedPlanetDetails: "Opis zapisany!",
+    unknown_starSystem: "Nieznany układ gwiezdny",
+    unknown_planetSystem: "Nieznany układ planetarny",
+
   },
   "en": {
     "tab_start": "Start",
@@ -367,6 +374,13 @@ const translations = {
   "detail_coords_label": "Coordinates",
   "detail_portal_btn": "Go to NMS Portals",
   "detail_notes_label": "Notes",
-  "detail_save_btn": "Save details"
+  "detail_save_btn": "Save details",
+
+planet_noSelected: "No planet selected",
+    alert_enterPlanetSystem: "Enter the planet system name to display the planet correctly in the list!",
+    alert_savedPlanetDetails: "Description saved!",
+    unknown_starSystem: "Unknown star system",
+    unknown_planetSystem: "Unknown planetary system",
+
   }
 };
