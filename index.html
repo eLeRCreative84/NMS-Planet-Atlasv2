@@ -489,6 +489,13 @@ function setLanguage(lang) {
       el.textContent = translations[lang][key];
     }
   });
+
+          updateCurrentPlanetHeader();
+          refreshGlobePoints();
+          refreshPointsList();
+          refreshPlanetSidebar();
+          refreshGalaxySidebar();
+	  updatePlanetMiniPanel();
 }
 
 // Zakładki
@@ -541,10 +548,10 @@ function updateCurrentPlanetHeader() {
     return; // wychodzimy bez nadpisywania dalej
   }
 
-  // Normalne działanie po starcie
+  // Normalne działanie po starcie - brak wybranej planety
   overlay.textContent = currentPlanet
     ? `${currentPlanet}`
-    : "Brak wybranej planety";
+    : translations[currentLang].planet_noSelected;
 }
 
 // odblokowanie blokady po starcie (0ms po załadowaniu strony)
@@ -644,7 +651,7 @@ function savePlanetDetails(){
 
   // Jeśli podano starSystem ale nie planetSystem — blokujemy zapisu (zgodnie z regułą)
   if (starSystemVal && !planetSystemVal) {
-    alert("Wprowadź nazwę układu planetarnego aby poprawnie wyświetlić planetę na liście!");
+    alert(translations[currentLang].alert_enterPlanetSystem);
     return;
   }
     //Sprawdza, czy w ogóle istnieje wpis w planetDetails dla aktualnej planety/księżyca.
@@ -703,7 +710,7 @@ function savePlanetDetails(){
 	  });
 
 
-  alert("Opis zapisany!");
+  alert(translations[currentLang].alert_savedPlanetDetails);
   refreshPlanetList();
   updateCurrentPlanetHeader();
   refreshPlanetSidebar();
@@ -742,7 +749,7 @@ function refreshPlanetSidebar() {
    // nagłówek układu gwiezdnego
 const starHeader = document.createElement("h5");
 starHeader.textContent = starGroup.starSystem === "Nieznany"
-  ? "Nieznany układ gwiezdny"
+  ? translations[currentLang].unknown_starSystem
   : starGroup.starSystem;
 
 starHeader.style.color = starGroup.starSystem === "Nieznany" ? "#aaa" : "#ffcc00";
@@ -762,7 +769,7 @@ listContainer.appendChild(starHeader);
       // nagłówek systemu
 		const header = document.createElement("h4");
 		header.textContent = planetSystem.name === "Nieznany"
-		  ? "Nieznany układ planetarny"
+		  ? translations[currentLang].unknown_planetSystem
 		  : planetSystem.name;
 		header.style.fontSize = "0.9rem";
 		header.style.margin = "0.5rem 0";
