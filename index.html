@@ -7,84 +7,107 @@
 <script src="https://unpkg.com/globe.gl"></script>
 <script src="icons.js"></script>
 <link rel="stylesheet" href="style.css">
+<script src="translate.js"></script>
 </head>
 <body>
   <div id="form">
-    <div id="tabs">
-      <button class="lock-while-edit active" onclick="openTab('start')">Start</button>
-      <button class="lock-while-edit" onclick="openTab('planety')">Planety</button>
-      <button class="lock-while-edit" onclick="openTab('punkty')">Punkty</button>
-      <button class="lock-while-edit" onclick="openTab('detale')">Detale planety</button>
+  <div id="tabs">
+    <button class="lock-while-edit active" onclick="openTab('start')" data-i18n="tab_start">Start</button>
+    <button class="lock-while-edit" onclick="openTab('planety')" data-i18n="tab_planety">Planety</button>
+    <button class="lock-while-edit" onclick="openTab('punkty')" data-i18n="tab_punkty">Punkty</button>
+    <button class="lock-while-edit" onclick="openTab('detale')" data-i18n="tab_detale">Detale</button>
+  </div>
+
+  <!-- Zakładka START -->
+  <div id="start" class="tab-content active">
+    <div id="noPlanetsMessage" style="color: #ffcc00; font-weight: bold; text-align: center; margin: 0.5rem 0;" data-i18n="start_noPlanets">
+      Stwórz nową planetę lub importuj dane JSON
     </div>
 
-    <!-- Zakładka START -->
-    <div id="start" class="tab-content active">
-      <div id="noPlanetsMessage" style="color: #ffcc00; font-weight: bold; text-align: center; margin: 0.5rem 0;">
-        Stwórz nową planetę lub importuj dane JSON
+    <h2 data-i18n="start_addPoint">Dodaj punkt</h2>
+    <div class="xy-inputs">
+      <div>
+        <label data-i18n="start_label_x">X (−90 do 90)</label>
+        <input type="number" id="lat" step="1" min="-90" max="90" />
       </div>
-      <h2>Dodaj punkt</h2>
-      <div class="xy-inputs">
-        <div>
-          <label>X (−90 do 90)</label>
-          <input type="number" id="lat" step="1" min="-90" max="90" />
-        </div>
-        <div>
-          <label>Y (−180 do 180)</label>
-          <input type="number" id="lng" step="1" min="-180" max="180" />
-        </div>
+      <div>
+        <label data-i18n="start_label_y">Y (−180 do 180)</label>
+        <input type="number" id="lng" step="1" min="-180" max="180" />
       </div>
-      <label>Nazwa punktu</label>
-      <input type="text" id="name" onkeydown="if(event.key === 'Enter') addPoint()" />
-      <label>Typ</label>
-      <select id="type">
-        <option>Zasób</option>
-        <option>Baza</option>
-        <option>Ruiny</option>
-        <option>Struktura</option>
-        <option>Inne</option>
-      </select>
-      <label>Notatki</label>
-      <textarea id="notes"></textarea>
-      <button onclick="addPoint()">Dodaj punkt</button>
-      <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-      <h2>Skalowanie globu i punktów</h2>
-      <!-- Suwak 1: Skalowanie punktów -->
-      <label>Skalowanie punktów</label>
-      <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
-        <input type="range" id="pointScale" min="0.1" max="1" step="0.1" value="0.4" oninput="updatePointScale()" style="flex:1;" />
-        <span id="pointScaleValue" style="width:2rem; text-align:center;">0.4</span>
-        <button onclick="resetPointScale()" style="padding:0.2rem 0.3rem; font-size:12px; width:auto;">Reset</button>
-      </div>
-      <!-- Suwak 2: Wysokość słupka -->
-      <label>Wysokość słupka</label>
-      <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
-        <input type="range" id="pointsDistanceMultiplier" min="0.5" max="30" step="0.5" value="1" oninput="updatePointsDistanceMultiplier()" style="flex:1;" />
-        <span id="pointsDistanceMultiplierValue" style="width:2rem; text-align:center;">1</span>
-        <button onclick="resetPointsDistanceMultiplier()" style="padding:0.2rem 0.3rem; font-size:12px; width:auto;">Reset</button>
-      </div>
-      <!-- Suwak 3: Zoom globu -->
-      <label>Zoom globu</label>
-      <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
-        <input type="range" id="globeZoomMultiplier" min="0.5" max="2" step="0.05" value="1" oninput="updateGlobeZoomMultiplier()" style="flex:1;" />
-        <span id="globeZoomMultiplierValue" style="width:2rem; text-align:center;">1</span>
-        <button onclick="resetGlobeZoomMultiplier()" style="padding:0.2rem 0.3rem; font-size:12px; width:auto;">Reset</button>
-      </div>
-      <!-- Autoobrót -->
-	     		<table style="width: 100%; margin-top: 0.5rem; border-collapse: collapse;">
-		  <tr>
-		    <td style="width: 70%; text-align: left;">
-		      Obracanie globu
-		    </td>
-		    <td style="width: 30%; text-align: left;">
-		      <input type="checkbox" id="autoRotateCheckbox" onchange="toggleAutoRotate()" />
-		    </td>
-		  </tr>
-		</table>
-      <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-      <h2>Import/Eksport</h2>
-      <button class="lock-while-edit" onclick="exportAtlas()">Eksport JSON</button>
-      <input class="lock-while-edit" type="file" id="importFile" accept="application/json" onchange="importAtlas(event)" />
     </div>
+
+    <label data-i18n="start_label_pointName">Nazwa punktu</label>
+    <input type="text" id="name" onkeydown="if(event.key === 'Enter') addPoint()" />
+
+    <label data-i18n="start_label_type">Typ</label>
+    <select id="type">
+      <option data-i18n="type_resource">Zasób</option>
+      <option data-i18n="type_base">Baza</option>
+      <option data-i18n="type_ruins">Ruiny</option>
+      <option data-i18n="type_structure">Struktura</option>
+      <option data-i18n="type_other">Inne</option>
+    </select>
+
+    <label data-i18n="start_label_notes">Notatki</label>
+    <textarea id="notes"></textarea>
+
+    <button onclick="addPoint()" data-i18n="start_btn_addPoint">Dodaj punkt</button>
+
+    <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+
+    <h2 data-i18n="start_scaling">Skalowanie globu i punktów</h2>
+
+    <!-- Suwak 1: Skalowanie punktów -->
+    <label data-i18n="start_pointScale">Skalowanie punktów</label>
+    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+      <input type="range" id="pointScale" min="0.1" max="1" step="0.1" value="0.4" oninput="updatePointScale()" style="flex:1;" />
+      <span id="pointScaleValue" style="width:2rem; text-align:center;">0.4</span>
+      <button onclick="resetPointScale()" style="padding:0.2rem 0.3rem; font-size:12px; width:auto;" data-i18n="start_btn_reset">Reset</button>
+    </div>
+
+    <!-- Suwak 2: Wysokość słupka -->
+    <label data-i18n="start_pointsDistanceMultiplier">Wysokość słupka</label>
+    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+      <input type="range" id="pointsDistanceMultiplier" min="0.5" max="30" step="0.5" value="1" oninput="updatePointsDistanceMultiplier()" style="flex:1;" />
+      <span id="pointsDistanceMultiplierValue" style="width:2rem; text-align:center;">1</span>
+      <button onclick="resetPointsDistanceMultiplier()" style="padding:0.2rem 0.3rem; font-size:12px; width:auto;" data-i18n="start_btn_reset">Reset</button>
+    </div>
+
+    <!-- Suwak 3: Zoom globu -->
+    <label data-i18n="start_globeZoom">Zoom globu</label>
+    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+      <input type="range" id="globeZoomMultiplier" min="0.5" max="2" step="0.05" value="1" oninput="updateGlobeZoomMultiplier()" style="flex:1;" />
+      <span id="globeZoomMultiplierValue" style="width:2rem; text-align:center;">1</span>
+      <button onclick="resetGlobeZoomMultiplier()" style="padding:0.2rem 0.3rem; font-size:12px; width:auto;" data-i18n="start_btn_reset">Reset</button>
+    </div>
+
+    <!-- Autoobrót -->
+    <table style="width: 100%; margin-top: 0.5rem; border-collapse: collapse;">
+      <tr>
+        <td style="width: 70%; text-align: left;" data-i18n="start_autoRotate">Obracanie globu</td>
+        <td style="width: 30%; text-align: left;">
+          <input type="checkbox" id="autoRotateCheckbox" onchange="toggleAutoRotate()" />
+        </td>
+      </tr>
+    </table>
+
+    <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+
+    <h2 data-i18n="start_importExport">Import/Eksport</h2>
+    <button class="lock-while-edit" onclick="exportAtlas()" data-i18n="start_btn_export">Eksport JSON</button>
+    <input class="lock-while-edit" type="file" id="importFile" accept="application/json" onchange="importAtlas(event)" />
+
+<div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+<label data-i18n="start_languageSelector">Wybierz język</label>
+<select id="languageSelector">
+  <option value="pl">Polski</option>
+  <option value="en">English</option>
+  
+</select>
+ 
+ </div>
+
+
 	
     <!-- Zakładka PLANETY -->
 <div id="planety" class="tab-content">
@@ -92,40 +115,37 @@
 <!-- Sub-zakładka Szukaj -->
 <div id="planetSearchTab">
   <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem; flex-wrap:wrap;">
-    <input type="text" id="planetSearchInput" placeholder="Nazwa planety..." oninput="refreshPlanetList()" />
-    <select id="biomeFilter" onchange="refreshPlanetList()"></select>
-    <select id="biomeAliasFilter" onchange="refreshPlanetList()"></select>
-    <select id="resourceFilter" onchange="refreshPlanetList()">
-      <option value="">Wszystkie pierwiastki</option>
-      <option value="Miedź">Miedź</option>
-      <option value="Kadm">Kadm</option>
-      <option value="Emeril">Emeril</option>
-      <option value="Ind">Ind</option>
-      <option value="Kwarcyt">Kwarcyt</option>
-      <option value="Metal chromatyczny">Metal chromatyczny</option>
-      <option value="Parafin">Parafin</option>
-      <option value="Piryt">Piryt</option>
-      <option value="Amoniak">Amoniak</option>
-      <option value="Uran">Uran</option>
-      <option value="Dioksyt">Dioksyt</option>
-      <option value="Fosfor">Fosfor</option>
-      <option value="Bazalt">Bazalt</option>
-      <option value="Skrystalizowany hel">Skrystalizowany hel</option>
-      <option value="Lit">Lit</option>
-      <option value="Kobalt">Kobalt</option>
-      <option value="Srebro">Srebro</option>
-      <option value="Złoto">Złoto</option>
-      <option value="Namagnesowany ferryt">Namagnesowany ferryt</option>
-      <option value="Sód">Sód</option>
-      <option value="Sól">Sól</option>
-      <option value="Zardzewiały metal">Zardzewiały metal</option>
+    <input type="text" id="planetSearchInput" placeholder="Nazwa planety..." data-i18n-placeholder="planet_search_placeholder" oninput="refreshPlanetList()" />
+    <select id="biomeFilter" onchange="refreshPlanetList()" data-i18n="planet_filter_biome"></select>
+    <select id="biomeAliasFilter" onchange="refreshPlanetList()" data-i18n="planet_filter_biomeAlias"></select>
+    <select id="resourceFilter" onchange="refreshPlanetList()" data-i18n="planet_filter_resource">
+      <option value="" data-i18n="planet_filter_allResources">Wszystkie pierwiastki</option>
+      <option value="Miedź" data-i18n="res_copper">Miedź</option>
+      <option value="Kadm" data-i18n="res_cadmium">Kadm</option>
+      <option value="Emeril" data-i18n="res_emeril">Emeril</option>
+      <option value="Ind" data-i18n="res_indium">Ind</option>
+      <option value="Kwarcyt" data-i18n="res_quartz">Kwarcyt</option>
+      <option value="Metal chromatyczny" data-i18n="res_chromatic_metal">Metal chromatyczny</option>
+      <option value="Parafin" data-i18n="res_paraffinium">Parafin</option>
+      <option value="Piryt" data-i18n="res_pyrite">Piryt</option>
+      <option value="Amoniak" data-i18n="res_ammonia">Amoniak</option>
+      <option value="Uran" data-i18n="res_uranium">Uran</option>
+      <option value="Dioksyt" data-i18n="res_dioxite">Dioksyt</option>
+      <option value="Fosfor" data-i18n="res_phosphorus">Fosfor</option>
+      <option value="Bazalt" data-i18n="res_basalt">Bazalt</option>
+      <option value="Skrystalizowany hel" data-i18n="res_crystal_helium">Skrystalizowany hel</option>
+      <option value="Lit" data-i18n="res_lithium">Lit</option>
+      <option value="Kobalt" data-i18n="res_cobalt">Kobalt</option>
+      <option value="Srebro" data-i18n="res_silver">Srebro</option>
+      <option value="Złoto" data-i18n="res_gold">Złoto</option>
+      <option value="Namagnesowany ferryt" data-i18n="res_magnetised_ferrite">Namagnesowany ferryt</option>
+      <option value="Sód" data-i18n="res_sodium">Sód</option>
+      <option value="Sól" data-i18n="res_salt">Sól</option>
+      <option value="Zardzewiały metal" data-i18n="res_rusty_metal">Zardzewiały metal</option>
     </select>
- 
   </div>
   <div id="planetList"></div>
 </div>
-
-
 
   <!-- Główna część zakładki Planety -->
   <div id="planetMainTab" style="display:block;">
@@ -133,18 +153,18 @@
 
       <!-- Przyciski w zakładce Planety -->
       <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
-        <button onclick="showPlanetSearchTab()">Szukaj</button>
+        <button onclick="showPlanetSearchTab()" data-i18n="planet_btn_search">Szukaj</button>
       </div>
 
       <!-- nazwa planety -->
-      <input type="text" id="newPlanetName" class="lock-while-edit" placeholder="Nazwa nowej planety" oninput="checkNewPlanetInput()" onkeydown="if(event.key === 'Enter') addNewPlanet()" />
+      <input type="text" id="newPlanetName" class="lock-while-edit" placeholder="Nazwa nowej planety" data-i18n-placeholder="planet_new_name" oninput="checkNewPlanetInput()" onkeydown="if(event.key === 'Enter') addNewPlanet()" />
 
-<!-- guzik tworzenia planety -->
-      <button id="addPlanetBtn" class="lock-while-edit" onclick="addNewPlanet()">Stwórz nową planetę</button>
+      <!-- guzik tworzenia planety -->
+      <button id="addPlanetBtn" class="lock-while-edit" onclick="addNewPlanet()" data-i18n="planet_btn_create">Stwórz nową planetę</button>
 	  
 	  <table style="width: 100%; border-collapse: collapse; margin-top: 0; margin-bottom: 0;">
 		  <tr style="margin:0; padding:0;">
-			<td style="width: 70%; text-align: left; padding: 0; margin: 0; line-height: 1;">
+			<td style="width: 70%; text-align: left; padding: 0; margin: 0; line-height: 1;" data-i18n="planet_label_isMoon">
 			  Twórz jako księżyc
 			</td>
 			<td style="width: 30%; text-align: left; padding: 0; margin: 0;">
@@ -153,23 +173,23 @@
 		  </tr>
 		</table>
 	  
-      <button id="generatePlanetNameBtn" onclick="generatePlanetName()" style="flex:1;"> Generuj nazwę </button>
+      <button id="generatePlanetNameBtn" onclick="generatePlanetName()" style="flex:1;" data-i18n="planet_btn_generateName">Generuj nazwę</button>
 	  	  
     </div>
 
       <!-- label + piker -->
       <div style="text-align:center">
-        <label>Wybierz kolor</label>
+        <label data-i18n="planet_label_color">Wybierz kolor</label>
         <input type="color" id="PlanetColor" value="#000000" class="lock-while-edit" style="width:100%; height:40px;">
       </div>
       
     <!-- Przycisk dodaj texturę i zmień kolor -->
     <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem;">
       <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-      <input type="text" id="planetTextureUrl" class="lock-while-edit" placeholder="URL tekstury" oninput="checkTextureInput()" />
+      <input type="text" id="planetTextureUrl" class="lock-while-edit" placeholder="URL tekstury" data-i18n-placeholder="planet_texture_url" oninput="checkTextureInput()" />
       <div class="planet-buttons-row">
-        <button id="setTextureBtn" class="lock-while-edit" onclick="addTextureUrl()">Ustaw teksturę</button>
-        <button id="setColorBtn" class="lock-while-edit" onclick="changePlanetColor()">Zmień kolor</button>
+        <button id="setTextureBtn" class="lock-while-edit" onclick="addTextureUrl()" data-i18n="planet_btn_setTexture">Ustaw teksturę</button>
+        <button id="setColorBtn" class="lock-while-edit" onclick="changePlanetColor()" data-i18n="planet_btn_setColor">Zmień kolor</button>
       </div>
     </div>
 
@@ -177,24 +197,24 @@
     <div id="textureGalleryContainer" class="lock-while-edit">
       <div id="textureGallery"></div>
       <div id="textureGalleryControls">
-        <button id="prevTexturePage" onclick="changeTexturePage(-1)">◀</button>
-        <button id="nextTexturePage" onclick="changeTexturePage(1)">▶</button>
+     	<button id="prevTexturePage" onclick="changeTexturePage(-1)">◀</button>
+      		   <button id="nextTexturePage" onclick="changeTexturePage(1)">▶</button>
       </div>
     </div>
 
     <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
 
     <div class="planet-buttons-row" style="margin-bottom:1rem;">
-      <button id="editSelectedPlanetBtn" onclick="editSelectedPlanet()" disabled>Zmień nazwę</button>
-      <button id="deleteSelectedPlanetBtn" class="lock-while-edit" onclick="deleteSelectedPlanet()" disabled>Usuń planetę</button>
+      <button id="editSelectedPlanetBtn" onclick="editSelectedPlanet()" disabled data-i18n="planet_btn_rename">Zmień nazwę</button>
+      <button id="deleteSelectedPlanetBtn" class="lock-while-edit" onclick="deleteSelectedPlanet()" disabled data-i18n="planet_btn_delete">Usuń planetę</button>
     </div>
 
     <!-- Ukryty kontener na edycję -->
     <div id="editPlanetBox" style="display:none; margin-bottom:1rem;">
-      <input type="text" id="editPlanetName" placeholder="Nowa nazwa planety" style="width:100%; margin-bottom:0.5rem;">
+      <input type="text" id="editPlanetName" placeholder="Nowa nazwa planety" data-i18n-placeholder="planet_edit_name" style="width:100%; margin-bottom:0.5rem;">
       <div style="display:flex; gap:0.5rem;">
-        <button onclick="acceptEditPlanet()">Akceptuj</button>
-        <button onclick="cancelEditPlanet()">Anuluj</button>
+        <button onclick="acceptEditPlanet()" data-i18n="planet_btn_accept">Akceptuj</button>
+        <button onclick="cancelEditPlanet()" data-i18n="planet_btn_cancel">Anuluj</button>
       </div>
     </div>
 
@@ -204,152 +224,175 @@
     <div id="planet-resources"></div>
   </div>
 </div>
-    <!-- Zakładka PUNKTY -->
-    <div id="punkty" class="tab-content">
-      <div><label>Filtruj</label></div>
-      <div style="height:0.5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-      <div id="pointFilters">
-        <label>Zasób <input type="checkbox" class="pointFilter" value="Zasób" checked></label>
-        <label>Baza <input type="checkbox" class="pointFilter" value="Baza" checked></label>
-        <label>Ruiny <input type="checkbox" class="pointFilter" value="Ruiny" checked></label>
-        <label>Struktura <input type="checkbox" class="pointFilter" value="Struktura" checked></label>
-        <label>Inne <input type="checkbox" class="pointFilter" value="Inne" checked></label>
-        <label>Bieguny <input type="checkbox" class="pointFilter" value="Pole" checked></label>
-        <label>Moja lokalizacja <input type="checkbox" class="pointFilter" value="Moja" checked></label>
-      </div>
-      <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-      <label>Filtry dodatkowe</label>
-      <div style="height:0.5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-      <div id="extraFilters">
-        <label>Wydobyty <input type="checkbox" class="extraFilter" value="Wydobyty" checked></label>
-        <label>Odwiedzony <input type="checkbox" class="extraFilter" value="Odwiedzony" checked></label>
-        <label>Niewydobyty <input type="checkbox" class="extraFilter" value="Niewydobyty" checked></label>
-        <label>Nieodwiedzony <input type="checkbox" class="extraFilter" value="Nieodwiedzony" checked></label>
-      </div>
-      <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-      <label>Sortuj:</label>
-      <select id="sortPoints" onchange="refreshPointsList()">
-        <option value="nameAsc">Nazwa A–Z</option>
-        <option value="nameDesc">Nazwa Z–A</option>
-        <option value="type">Typ</option>
-        <option value="newest">Najnowsze</option>
-        <option value="oldest">Najstarsze</option>
-      </select>
-      <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
-      <ul id="pointsList"></ul>
-    </div>
-    <!-- Zakładka DETALE PLANETY -->
-    <div id="detale" class="tab-content">
-      <label>Galaktyka</label>
-		<div class="galaxy-selector">
-  			<input type="text" id="galaxyInput" placeholder="Wybierz galaktykę...">
-  			<div id="galaxyDropdown" class="dropdown"></div>
-	    </div>
-	  <label>Układ gwiezdy</label><input type="text" id="detailStarSystem" />
-      <label>Układ planetarny</label><input type="text" id="detailPlanetSystem" />
-     
-	 
-	 <label for="detailBiome">Biom:</label>
-<select id="detailBiome" onchange="updateBiomeAlias()">
-  <option value="">-- Wybierz biom --</option>
-  <option value="Bujny">Bujny</option>
-  <option value="Jałowy">Jałowy</option>
-  <option value="Martwy">Martwy</option>
-  <option value="Egzotyczny">Egzotyczny</option>
-  <option value="Mega Egzotyczny">Mega Egzotyczny</option>
-  <option value="Spalony">Spalony</option>
-  <option value="Zamrożony">Zamrożony</option>
-  <option value="Toksyczny">Toksyczny</option>
-  <option value="Napromieniowany">Napromieniowany</option>
-  <option value="Bagno">Bagno</option>
-  <option value="Wulkaniczny">Wulkaniczny</option>
-  <option value="Gazowy Gigant">Gazowy Gigant</option>
-</select>
 
-<label for="detailBiomeAlias" style="margin-top:0.5rem; display:block;">Alternatywna nazwa biomu:</label>
-<select id="detailBiomeAlias">
-  <option value="">-- Wybierz alternatywną nazwę --</option>
-</select>
-	 	 
-      <label>Pogoda</label>
-      <select id="detailWeather">
-        <option value="">-- wybierz --</option>
-        <option>Brak atmosfery</option>
-        <option>Słonecznie</option>
-        <option>Chłodno</option>
-        <option>Mroźno</option>
-        <option>Ciepło</option>
-        <option>Gorąco</option>
-        <option>Wilgotno</option>
-        <option>Deszczowo</option>
-        <option>Burzowo</option>
-        <option>Radioaktywne</option>
-        <option>Toksyczne</option>
-        <option>Kwasyczne</option>
-        <option>Pyłowe</option>
-        <option>Wulkaniczne</option>
-        <option>Burze piaskowe</option>
-        <option>Tornada</option>
-        <option>Meteoryty</option>
-        <option>Burze ogniste</option>
-        <option>Wysokie ciśnienie</option>
-        <option>Niskie ciśnienie</option>
-        <option>Burze magnetyczne</option>
-        <option>Burze elektryczne</option>
-      </select>
-      <label>Strażnicy</label>
-      <select id="detailSentinels">
-        <option value="">-- wybierz --</option>
-        <option>Pasywne</option>
-        <option>Brak</option>
-        <option>Zrelaksowane</option>
-        <option>Ograniczone</option>
-        <option>Niskie</option>
-        <option>Niskie bezpieczeństwo</option>
-        <option>Minimalne</option>
-        <option>Aktywne</option>
-        <option>Średnie</option>
-        <option>Standardowe</option>
-        <option>Typowe</option>
-        <option>Uważne</option>
-      </select>
-      <label>Flora</label>
-      <select id="detailFlora">
-        <option value="">-- wybierz --</option>
-        <option>Brak</option>
-        <option>Sporadyczna</option>
-        <option>Skąpa</option>
-        <option>Średnia</option>
-        <option>Obfita</option>
-        <option>Ekstremalna</option>
-      </select>
-      <label>Fauna</label>
-      <select id="detailFauna">
-        <option value="">-- wybierz --</option>
-        <option>Brak</option>
-        <option>Sporadyczna</option>
-        <option>Skąpa</option>
-        <option>Średnia</option>
-        <option>Obfita</option>
-        <option>Ekstremalna</option>
-      </select>
-      <label>Odkryty przez</label><input type="text" id="detailDiscovered" />
-      <label>Tryb gry</label>
-      <select id="detailMode">
-        <option value="">-- wybierz --</option>
-        <option>Normalny</option>
-        <option>Kreatywny</option>
-        <option>Survival</option>
-        <option>Permadeath</option>
-      </select>
-      <label>Zaktualizowano</label><input type="text" id="detailUpdated" />
-      <label>Koordynaty</label><input type="text" id="detailCoords" />
-      <!-- Przycisk przejdź do NMS Portals -->
-      <button onclick="window.open('https://nmsportals.github.io', '_blank')" style="margin-top:0.5rem; background:#1976d2; color:white; padding:0.5rem; border:none; border-radius:4px; cursor:pointer;"> Przejdź do NMS Portals </button>
-      <label>Notatki planety</label><textarea id="detailNotes"></textarea>
-      <button onclick="savePlanetDetails()">Zapisz opis planety</button>
-    </div>
+   <!-- Zakładka PUNKTY -->
+<div id="punkty" class="tab-content">
+  <div><label data-i18n="points_filter_label">Filtruj</label></div>
+  <div style="height:0.5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+  <div id="pointFilters">
+    <label data-i18n="points_filter_resource">Zasób <input type="checkbox" class="pointFilter" value="Zasób" checked></label>
+    <label data-i18n="points_filter_base">Baza <input type="checkbox" class="pointFilter" value="Baza" checked></label>
+    <label data-i18n="points_filter_ruins">Ruiny <input type="checkbox" class="pointFilter" value="Ruiny" checked></label>
+    <label data-i18n="points_filter_structure">Struktura <input type="checkbox" class="pointFilter" value="Struktura" checked></label>
+    <label data-i18n="points_filter_other">Inne <input type="checkbox" class="pointFilter" value="Inne" checked></label>
+    <label data-i18n="points_filter_poles">Bieguny <input type="checkbox" class="pointFilter" value="Pole" checked></label>
+    <label data-i18n="points_filter_myloc">Moja lokalizacja <input type="checkbox" class="pointFilter" value="Moja" checked></label>
   </div>
+
+  <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+  <label data-i18n="points_extra_filters_label">Filtry dodatkowe</label>
+  <div style="height:0.5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+
+  <div id="extraFilters">
+    <label data-i18n="points_extra_mined">Wydobyty <input type="checkbox" class="extraFilter" value="Wydobyty" checked></label>
+    <label data-i18n="points_extra_visited">Odwiedzony <input type="checkbox" class="extraFilter" value="Odwiedzony" checked></label>
+    <label data-i18n="points_extra_unmined">Niewydobyty <input type="checkbox" class="extraFilter" value="Niewydobyty" checked></label>
+    <label data-i18n="points_extra_unvisited">Nieodwiedzony <input type="checkbox" class="extraFilter" value="Nieodwiedzony" checked></label>
+  </div>
+
+  <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+  <label data-i18n="points_sort_label">Sortuj:</label>
+  <select id="sortPoints" onchange="refreshPointsList()">
+    <option value="nameAsc" data-i18n="sort_name_asc">Nazwa A–Z</option>
+    <option value="nameDesc" data-i18n="sort_name_desc">Nazwa Z–A</option>
+    <option value="type" data-i18n="sort_type">Typ</option>
+    <option value="newest" data-i18n="sort_newest">Najnowsze</option>
+    <option value="oldest" data-i18n="sort_oldest">Najstarsze</option>
+  </select>
+  <div style="height:5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+  <ul id="pointsList"></ul>
+</div>
+
+<!-- Zakładka DETALE PLANETY -->
+<div id="detale" class="tab-content">
+  <label data-i18n="detail_galaxy_label">Galaktyka</label>
+  <div class="galaxy-selector">
+    <input type="text" id="galaxyInput" placeholder="Wybierz galaktykę..." data-i18n-placeholder="detail_galaxy_placeholder">
+    <div id="galaxyDropdown" class="dropdown"></div>
+  </div>
+
+  <label data-i18n="detail_star_system_label">Układ gwiezdy</label>
+  <input type="text" id="detailStarSystem" />
+
+  <label data-i18n="detail_planet_system_label">Układ planetarny</label>
+  <input type="text" id="detailPlanetSystem" />
+
+  <label for="detailBiome" data-i18n="detail_biome_label">Biom:</label>
+  <select id="detailBiome" onchange="updateBiomeAlias()">
+    <option value="" data-i18n="detail_biome_none">-- Wybierz biom --</option>
+    <option value="Bujny" data-i18n="biome_lush">Bujny</option>
+    <option value="Jałowy" data-i18n="biome_barren">Jałowy</option>
+    <option value="Martwy" data-i18n="biome_dead">Martwy</option>
+    <option value="Egzotyczny" data-i18n="biome_exotic">Egzotyczny</option>
+    <option value="Mega Egzotyczny" data-i18n="biome_mega_exotic">Mega Egzotyczny</option>
+    <option value="Spalony" data-i18n="biome_hot">Spalony</option>
+    <option value="Zamrożony" data-i18n="biome_frozen">Zamrożony</option>
+    <option value="Toksyczny" data-i18n="biome_toxic">Toksyczny</option>
+    <option value="Napromieniowany" data-i18n="biome_radioactive">Napromieniowany</option>
+    <option value="Bagno" data-i18n="biome_swamp">Bagno</option>
+    <option value="Wulkaniczny" data-i18n="biome_volcanic">Wulkaniczny</option>
+    <option value="Gazowy Gigant" data-i18n="biome_gas_giant">Gazowy Gigant</option>
+  </select>
+
+  <label for="detailBiomeAlias" style="margin-top:0.5rem; display:block;" data-i18n="detail_biome_alias_label">Alternatywna nazwa biomu:</label>
+  <select id="detailBiomeAlias">
+    <option value="" data-i18n="detail_biome_alias_none">-- Wybierz alternatywną nazwę --</option>
+  </select>
+
+  <label data-i18n="detail_weather_label">Pogoda</label>
+  <select id="detailWeather">
+    <option value="" data-i18n="weather_none">-- wybierz --</option>
+    <option data-i18n="weather_none_atmosphere">Brak atmosfery</option>
+    <option data-i18n="weather_sunny">Słonecznie</option>
+    <option data-i18n="weather_cool">Chłodno</option>
+    <option data-i18n="weather_frosty">Mroźno</option>
+    <option data-i18n="weather_warm">Ciepło</option>
+    <option data-i18n="weather_hot">Gorąco</option>
+    <option data-i18n="weather_humid">Wilgotno</option>
+    <option data-i18n="weather_rainy">Deszczowo</option>
+    <option data-i18n="weather_stormy">Burzowo</option>
+    <option data-i18n="weather_radioactive">Radioaktywne</option>
+    <option data-i18n="weather_toxic">Toksyczne</option>
+    <option data-i18n="weather_acidic">Kwasyczne</option>
+    <option data-i18n="weather_dusty">Pyłowe</option>
+    <option data-i18n="weather_volcanic">Wulkaniczne</option>
+    <option data-i18n="weather_sandstorm">Burze piaskowe</option>
+    <option data-i18n="weather_tornado">Tornada</option>
+    <option data-i18n="weather_meteor">Meteoryty</option>
+    <option data-i18n="weather_firestorm">Burze ogniste</option>
+    <option data-i18n="weather_high_pressure">Wysokie ciśnienie</option>
+    <option data-i18n="weather_low_pressure">Niskie ciśnienie</option>
+    <option data-i18n="weather_magnetic">Burze magnetyczne</option>
+    <option data-i18n="weather_electric">Burze elektryczne</option>
+  </select>
+
+  <label data-i18n="detail_sentinels_label">Strażnicy</label>
+  <select id="detailSentinels">
+    <option value="" data-i18n="sentinels_none">-- wybierz --</option>
+    <option data-i18n="sentinels_passive">Pasywne</option>
+    <option data-i18n="sentinels_no">Brak</option>
+    <option data-i18n="sentinels_relaxed">Zrelaksowane</option>
+    <option data-i18n="sentinels_limited">Ograniczone</option>
+    <option data-i18n="sentinels_low">Niskie</option>
+    <option data-i18n="sentinels_low_security">Niskie bezpieczeństwo</option>
+    <option data-i18n="sentinels_minimal">Minimalne</option>
+    <option data-i18n="sentinels_active">Aktywne</option>
+    <option data-i18n="sentinels_medium">Średnie</option>
+    <option data-i18n="sentinels_standard">Standardowe</option>
+    <option data-i18n="sentinels_typical">Typowe</option>
+    <option data-i18n="sentinels_alert">Uważne</option>
+  </select>
+
+  <label data-i18n="detail_flora_label">Flora</label>
+  <select id="detailFlora">
+    <option value="" data-i18n="flora_none">-- wybierz --</option>
+    <option data-i18n="flora_none2">Brak</option>
+    <option data-i18n="flora_sparse">Sporadyczna</option>
+    <option data-i18n="flora_low">Skąpa</option>
+    <option data-i18n="flora_medium">Średnia</option>
+    <option data-i18n="flora_rich">Obfita</option>
+    <option data-i18n="flora_extreme">Ekstremalna</option>
+  </select>
+
+  <label data-i18n="detail_fauna_label">Fauna</label>
+  <select id="detailFauna">
+    <option value="" data-i18n="fauna_none">-- wybierz --</option>
+    <option data-i18n="fauna_none2">Brak</option>
+    <option data-i18n="fauna_sparse">Sporadyczna</option>
+    <option data-i18n="fauna_low">Skąpa</option>
+    <option data-i18n="fauna_medium">Średnia</option>
+    <option data-i18n="fauna_rich">Obfita</option>
+    <option data-i18n="fauna_extreme">Ekstremalna</option>
+  </select>
+
+  <label data-i18n="detail_discovered_label">Odkryty przez</label>
+  <input type="text" id="detailDiscovered" />
+
+  <label data-i18n="detail_mode_label">Tryb gry</label>
+  <select id="detailMode">
+    <option value="" data-i18n="mode_none">-- wybierz --</option>
+    <option data-i18n="mode_normal">Normalny</option>
+    <option data-i18n="mode_creative">Kreatywny</option>
+    <option data-i18n="mode_survival">Survival</option>
+    <option data-i18n="mode_permadeath">Permadeath</option>
+  </select>
+
+  <label data-i18n="detail_updated_label">Zaktualizowano</label>
+  <input type="text" id="detailUpdated" />
+
+  <label data-i18n="detail_coords_label">Koordynaty</label>
+  <input type="text" id="detailCoords" />
+
+  <button onclick="window.open('https://nmsportals.github.io', '_blank')" 
+          style="margin-top:0.5rem; background:#1976d2; color:white; padding:0.5rem; border:none; border-radius:4px; cursor:pointer;"
+          data-i18n="detail_portal_btn">Przejdź do NMS Portals</button>
+
+  <label data-i18n="detail_notes_label">Notatki</label>
+  <textarea id="detailNotes"></textarea>
+  <button onclick="savePlanetDetails()" data-i18n="detail_save_btn">Zapisz detale</button>
+</div>
+</div>
+
   <!-- Obszar wizualizacji globu -->
   <div id="globeWrapper" style="position: relative;">
     <!-- nagłówek overlay -->
@@ -409,6 +452,44 @@ let headerLock = true; // blokada na starcie celem zablokowania możliwości nad
 ////////////////////////////////////////////////////////////////////
 //----------------- Zakładki i inne elementy UI -----------------//
 //////////////////////////////////////////////////////////////////// 
+
+let currentLang = "pl"; // domyślny język
+
+function setLanguage(lang) {
+  if (!translations[lang]) {
+    return console.warn(`Brak tłumaczeń dla języka: ${lang}`);
+  }
+  currentLang = lang;
+
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    if (!translations[lang][key]) return;
+
+    // INPUT i TEXTAREA => placeholder
+    if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+      el.placeholder = translations[lang][key];
+    } 
+    // LABEL => zachowanie checkboxów/radiobuttonów
+    else if (el.tagName === "LABEL") {
+      const input = el.querySelector("input");
+      if (input) {
+        // Sprawdzenie czy istnieje textNode po input
+        let textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+        if (textNode) {
+          textNode.textContent = " " + translations[lang][key]; // nadpisanie tekstu
+        } else {
+          el.appendChild(document.createTextNode(" " + translations[lang][key]));
+        }
+      } else {
+        el.textContent = translations[lang][key];
+      }
+    } 
+    // Inne elementy (div, span, button, p) => zwykły tekst
+    else {
+      el.textContent = translations[lang][key];
+    }
+  });
+}
 
 // Zakładki
 function openTab(tabId) {
@@ -1265,6 +1346,14 @@ function initPlanetFilters() {
 document.addEventListener("DOMContentLoaded", () => {
   initPlanetFilters();
   refreshPlanetList(); // od razu wyświetlamy listę planet
+
+  // Obsługa zmiany języka
+  const langSelect = document.getElementById("languageSelector");
+  if (langSelect) {
+    langSelect.addEventListener("change", (e) => {
+      setLanguage(e.target.value);
+    });
+  }
 });
 
 // Tworzy pojedynczy wiersz
@@ -2487,6 +2576,12 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById('prevTexturePage').disabled = true;
   document.getElementById('nextTexturePage').disabled = true;
   }); 
+
+//Włączenie tłumaczeń przy starcie strony
+document.addEventListener("DOMContentLoaded", () => {
+  setLanguage(currentLang); // ustaw domyślny język
+});
+
     
 globe.showGraticules(true).graticuleLineWidth(0.5);
 
