@@ -13,7 +13,7 @@
     position: absolute; top: 10px; left: 10px; padding:10px;
     background: rgba(0,0,0,0.6); color:white; border-radius:5px;
   }
-  #hud input { width:50px; margin-right:5px; }
+  #hud input { width:60px; margin-right:5px; }
   #hud button { margin-left:5px; }
 </style>
 </head>
@@ -25,6 +25,10 @@
   X: <input type="number" id="xInput" value="0">
   Y: <input type="number" id="yInput" value="0">
   Z: <input type="number" id="zInput" value="0">
+  <br>
+  NMS: <input type="text" id="coordInput" placeholder="AAAA:BBBB:CCCC:DDDD" style="width:180px;">
+  <button id="addFromNMS">Dodaj NMS</button>
+  <br>
   <button id="addPoint">Dodaj</button>
   <button id="editPoint">Edytuj</button>
   <button id="deletePoint">Usuń</button>
@@ -68,10 +72,11 @@ pointMaterial.emissiveColor = new BABYLON.Color3(0, 1, 0); // zielony
 const selectedMaterial = new BABYLON.StandardMaterial("selectedMat", scene);
 selectedMaterial.emissiveColor = new BABYLON.Color3(1, 0, 0); // czerwony
 
-function addPoint(x, y, z) {
+function addPoint(x, y, z, system = null) {
   const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`, { diameter: 2 }, scene);
   sphere.position.set(x, y, z);
   sphere.material = pointMaterial.clone();
+  sphere.metadata = { system };
 
   // Kliknięcie w punkt
   sphere.actionManager = new BABYLON.ActionManager(scene);
@@ -120,6 +125,18 @@ function focusCameraOn(point) {
     camera.target.clone(), target, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
 }
 
+// === PARSER KOORDYNATÓW NMS ===
+function parseNMSCoords(str) {
+  const parts = str.trim().split(':');
+  if (parts.length !== 4) throw new Error("Zły format! Użyj AAAA:BBBB:CCCC:DDDD");
+  const [system, bx, by, bz] = parts;
+  const x = parseInt(bx, 16);
+  const y = parseInt(by, 16);
+  const z = parseInt(bz, 16);
+  if (isNaN(x) || isNaN(y) || isNaN(z)) throw new Error("Błędne współrzędne HEX!");
+  return { system, x, y, z };
+}
+
 // === HUD ===
 document.getElementById('addPoint').addEventListener('click', () => {
   const x = parseFloat(document.getElementById('xInput').value);
@@ -128,11 +145,20 @@ document.getElementById('addPoint').addEventListener('click', () => {
   addPoint(x, y, z);
 });
 
+document.getElementById('addFromNMS').addEventListener('click', () => {
+  const coordStr = document.getElementById('coordInput').value.trim();
+  try {
+    const { system, x, y, z } = parseNMSCoords(coordStr);
+    addPoint(x, y, z, system);
+  } catch (e) {
+    alert(e.message);
+  }
+});
+
 document.getElementById('zoomToPoint').addEventListener('click', () => {
   if (selectedPoint) focusCameraOn(selectedPoint);
 });
 
-// === NOWE: EDYCJA PUNKTU ===
 document.getElementById('editPoint').addEventListener('click', () => {
   if (!selectedPoint) return alert("Nie zaznaczono punktu!");
   const x = parseFloat(document.getElementById('xInput').value);
@@ -143,7 +169,7 @@ document.getElementById('editPoint').addEventListener('click', () => {
   // Odśwież linie powiązane
   lines.forEach(line => {
     if (line.metadata.a === selectedPoint || line.metadata.b === selectedPoint) {
-      line = BABYLON.MeshBuilder.CreateLines(null, {
+      BABYLON.MeshBuilder.CreateLines(null, {
         points: [line.metadata.a.position, line.metadata.b.position],
         instance: line
       });
@@ -151,11 +177,8 @@ document.getElementById('editPoint').addEventListener('click', () => {
   });
 });
 
-// === NOWE: USUWANIE PUNKTU ===
 document.getElementById('deletePoint').addEventListener('click', () => {
   if (!selectedPoint) return alert("Nie zaznaczono punktu!");
-
-  // Usuń linie połączone z punktem
   lines = lines.filter(line => {
     if (line.metadata.a === selectedPoint || line.metadata.b === selectedPoint) {
       line.dispose();
@@ -163,8 +186,6 @@ document.getElementById('deletePoint').addEventListener('click', () => {
     }
     return true;
   });
-
-  // Usuń punkt
   points = points.filter(p => p !== selectedPoint);
   selectedPoint.dispose();
   selectedPoint = null;
@@ -175,17 +196,5 @@ engine.runRenderLoop(() => scene.render());
 window.addEventListener("resize", () => engine.resize());
 </script>
 
-
-
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
