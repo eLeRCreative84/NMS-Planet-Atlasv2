@@ -42,24 +42,30 @@ camera.attachControl(canvas, true);
 const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0,1,0), scene);
 
 // Skybox z GitHub
-const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:10000}, scene);
-const skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
+const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 10000.0 }, scene);
+const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+
 skyboxMaterial.backFaceCulling = false;
 skyboxMaterial.disableLighting = true;
-skyboxMaterial.diffuseColor = new BABYLON.Color3(0,0,0);
-skyboxMaterial.specularColor = new BABYLON.Color3(0,0,0);
 
-// LINK DO TWOJEGO SKYBOXA NA GITHUB (Raw)
-skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
-  "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1",
-  scene,
-  null,
-  false,
-  [ "_px", "_pz", "_nx", "_nz", "_py", "_ny" ]
-);
+// 🔹 UWAGA: ustaw poprawne rozszerzenie (.jpg albo .png)
+const basePath = "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1";
+const extension = ".jpg";
+
+// 🔹 Tworzymy teksturę cube manualnie (bez błędu 404)
+const cubeTex = new BABYLON.CubeTexture.CreateFromImages([
+  basePath + "_px" + extension,  // Right
+  basePath + "_nx" + extension,  // Left
+  basePath + "_py" + extension,  // Top
+  basePath + "_ny" + extension,  // Bottom
+  basePath + "_pz" + extension,  // Front
+  basePath + "_nz" + extension   // Back
+], scene);
+
+skyboxMaterial.reflectionTexture = cubeTex;
 skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-skyboxMaterial.reflectionTexture.rotationY = Math.PI;
-skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+skyboxMaterial.reflectionTexture.rotationY = Math.PI; // 🔁 jeśli coś nadal nie pasuje, zmień np. na Math.PI / 2
+
 skybox.material = skyboxMaterial;
 
 // Punkty
@@ -108,6 +114,7 @@ window.addEventListener("resize", ()=>engine.resize());
 
 </body>
 </html>
+
 
 
 
