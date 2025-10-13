@@ -55,8 +55,10 @@ skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
   scene,
   null,
   false,
-  [ "_px", "_pz", "_nx", "_nz", "_py", "_ny" ] // zamiana front/back
+  [ "_px", "_pz", "_nx", "_nz", "_py", "_ny" ]
 );
+skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+skyboxMaterial.reflectionTexture.rotationY = Math.PI;
 skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
 skybox.material = skyboxMaterial;
 
@@ -106,6 +108,7 @@ window.addEventListener("resize", ()=>engine.resize());
 
 </body>
 </html>
+
 
 
 
