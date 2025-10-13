@@ -52,7 +52,10 @@ skyboxMaterial.specularColor = new BABYLON.Color3(0,0,0);
 // LINK DO TWOJEGO SKYBOXA NA GITHUB (Raw)
 skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
   "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1",
-  scene
+  scene,
+  null,
+  false,
+  [ "_px", "_pz", "_nx", "_nz", "_py", "_ny" ] // zamiana front/back
 );
 skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
 skybox.material = skyboxMaterial;
@@ -103,6 +106,7 @@ window.addEventListener("resize", ()=>engine.resize());
 
 </body>
 </html>
+
 
 
 
