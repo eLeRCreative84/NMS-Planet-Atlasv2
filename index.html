@@ -48,7 +48,6 @@ skyboxMaterial.backFaceCulling = false;
 skyboxMaterial.disableLighting = true;
 skyboxMaterial.diffuseColor = new BABYLON.Color3(0,0,0);
 skyboxMaterial.specularColor = new BABYLON.Color3(0,0,0);
-
 skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
   "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1",
   scene
@@ -58,16 +57,14 @@ skybox.material = skyboxMaterial;
 
 // === PUNKTY I WĘZŁY ===
 let points = [];
+let lines = [];
 let selectedPoint = null;
 
 const pointMaterial = new BABYLON.StandardMaterial("pointMat", scene);
-pointMaterial.emissiveColor = new BABYLON.Color3(0, 1, 0); // jaskrawozielony
+pointMaterial.emissiveColor = new BABYLON.Color3(0, 1, 0); // zielony
 
 const selectedMaterial = new BABYLON.StandardMaterial("selectedMat", scene);
 selectedMaterial.emissiveColor = new BABYLON.Color3(1, 0, 0); // czerwony
-
-const lineMaterial = new BABYLON.StandardMaterial("lineMat", scene);
-lineMaterial.emissiveColor = new BABYLON.Color3(1, 1, 0); // żółty
 
 function addPoint(x, y, z) {
   const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`, { diameter: 2 }, scene);
@@ -78,34 +75,43 @@ function addPoint(x, y, z) {
   sphere.actionManager = new BABYLON.ActionManager(scene);
   sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
     BABYLON.ActionManager.OnPickTrigger,
-    function (evt) {
+    function () {
       if (selectedPoint) selectedPoint.material = pointMaterial.clone();
       selectedPoint = sphere;
       selectedPoint.material = selectedMaterial;
+
+      // Aktualizuj pola w HUD
+      document.getElementById("xInput").value = selectedPoint.position.x.toFixed(2);
+      document.getElementById("yInput").value = selectedPoint.position.y.toFixed(2);
+      document.getElementById("zInput").value = selectedPoint.position.z.toFixed(2);
     }
   ));
 
-  // Dodaj połączenie z poprzednim punktem (jeśli istnieje i był zaznaczony)
+  // Połączenie z poprzednim punktem
   if (selectedPoint && selectedPoint !== sphere) {
     const path = [selectedPoint.position, sphere.position];
-    const line = BABYLON.MeshBuilder.CreateLines("line", { points: path, updatable: false }, scene);
-    line.color = new BABYLON.Color3(1, 1, 0); // żółty
-    line.material = lineMaterial;
+    const line = BABYLON.MeshBuilder.CreateLines("line", { points: path }, scene);
+    line.color = new BABYLON.Color3(1, 1, 0);
+    line.metadata = { a: selectedPoint, b: sphere };
+    lines.push(line);
   }
 
   points.push(sphere);
 
-  // Nowy punkt staje się wybranym
+  // Zaznacz nowy punkt
   if (selectedPoint) selectedPoint.material = pointMaterial.clone();
   selectedPoint = sphere;
   selectedPoint.material = selectedMaterial;
 
-  // Kamera – automatyczny zoom do nowego punktu
-  const target = sphere.position.clone();
+  // Kamera – zoom do nowego punktu
+  focusCameraOn(selectedPoint);
+}
+
+function focusCameraOn(point) {
+  const target = point.position.clone();
   const distance = 10;
   const direction = camera.position.subtract(camera.target).normalize().scale(distance);
   const newPosition = target.add(direction);
-
   BABYLON.Animation.CreateAndStartAnimation("camMove", camera, "position", 60, 60,
     camera.position.clone(), newPosition, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
   BABYLON.Animation.CreateAndStartAnimation("camTarget", camera, "target", 60, 60,
@@ -121,16 +127,45 @@ document.getElementById('addPoint').addEventListener('click', () => {
 });
 
 document.getElementById('zoomToPoint').addEventListener('click', () => {
-  if (!selectedPoint) return;
-  const target = selectedPoint.position.clone();
-  const distance = 10;
-  const direction = camera.position.subtract(camera.target).normalize().scale(distance);
-  const newPosition = target.add(direction);
+  if (selectedPoint) focusCameraOn(selectedPoint);
+});
 
-  BABYLON.Animation.CreateAndStartAnimation("camMove", camera, "position", 60, 60,
-    camera.position.clone(), newPosition, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-  BABYLON.Animation.CreateAndStartAnimation("camTarget", camera, "target", 60, 60,
-    camera.target.clone(), target, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+// === NOWE: EDYCJA PUNKTU ===
+document.getElementById('editPoint').addEventListener('click', () => {
+  if (!selectedPoint) return alert("Nie zaznaczono punktu!");
+  const x = parseFloat(document.getElementById('xInput').value);
+  const y = parseFloat(document.getElementById('yInput').value);
+  const z = parseFloat(document.getElementById('zInput').value);
+  selectedPoint.position.set(x, y, z);
+
+  // Odśwież linie powiązane
+  lines.forEach(line => {
+    if (line.metadata.a === selectedPoint || line.metadata.b === selectedPoint) {
+      line = BABYLON.MeshBuilder.CreateLines(null, {
+        points: [line.metadata.a.position, line.metadata.b.position],
+        instance: line
+      });
+    }
+  });
+});
+
+// === NOWE: USUWANIE PUNKTU ===
+document.getElementById('deletePoint').addEventListener('click', () => {
+  if (!selectedPoint) return alert("Nie zaznaczono punktu!");
+
+  // Usuń linie połączone z punktem
+  lines = lines.filter(line => {
+    if (line.metadata.a === selectedPoint || line.metadata.b === selectedPoint) {
+      line.dispose();
+      return false;
+    }
+    return true;
+  });
+
+  // Usuń punkt
+  points = points.filter(p => p !== selectedPoint);
+  selectedPoint.dispose();
+  selectedPoint = null;
 });
 
 // Render loop
@@ -139,8 +174,10 @@ window.addEventListener("resize", () => engine.resize());
 </script>
 
 
+
 </body>
 </html>
+
 
 
 
