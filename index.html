@@ -49,10 +49,9 @@ skyboxMaterial.disableLighting = true;
 skyboxMaterial.diffuseColor = new BABYLON.Color3(0,0,0);
 skyboxMaterial.specularColor = new BABYLON.Color3(0,0,0);
 
-// TUTAJ wstaw swój link do repozytorium GitHub, do katalogu z 6 plikami
-// WAŻNE: link musi prowadzić do "Raw" GitHub: https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/textures/skybox/sky1
+// LINK DO TWOJEGO SKYBOXA NA GITHUB (Raw)
 skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
-  "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/refs/heads/main/textures/skybox/sky1",
+  "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1",
   scene
 );
 skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
@@ -104,4 +103,3 @@ window.addEventListener("resize", ()=>engine.resize());
 
 </body>
 </html>
-
