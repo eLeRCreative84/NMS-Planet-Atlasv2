@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8">
-<title>Mapa 3D z skyboxem Babylon.js</title>
+<title>Mapa 3D z skyboxem z GitHub</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.babylonjs.com/babylon.js"></script>
 <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
@@ -30,74 +30,76 @@
 </div>
 
 <script>
-  const canvas = document.getElementById("renderCanvas");
-  const engine = new BABYLON.Engine(canvas, true);
-  const scene = new BABYLON.Scene(engine);
+const canvas = document.getElementById("renderCanvas");
+const engine = new BABYLON.Engine(canvas, true);
+const scene = new BABYLON.Scene(engine);
 
-  // Kamera orbitująca
-  const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/4, Math.PI/4, 100, new BABYLON.Vector3(0,0,0), scene);
-  camera.attachControl(canvas, true);
+// Kamera orbitująca
+const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/4, Math.PI/4, 100, new BABYLON.Vector3(0,0,0), scene);
+camera.attachControl(canvas, true);
 
-  // Światło
-  const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0,1,0), scene);
+// Światło
+const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0,1,0), scene);
 
-  // Skybox
-  const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:10000}, scene);
-  const skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
-  skyboxMaterial.backFaceCulling = false;
-  skyboxMaterial.disableLighting = true;
-  skyboxMaterial.diffuseColor = new BABYLON.Color3(0,0,0);
-  skyboxMaterial.specularColor = new BABYLON.Color3(0,0,0);
+// Skybox z GitHub
+const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:10000}, scene);
+const skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
+skyboxMaterial.backFaceCulling = false;
+skyboxMaterial.disableLighting = true;
+skyboxMaterial.diffuseColor = new BABYLON.Color3(0,0,0);
+skyboxMaterial.specularColor = new BABYLON.Color3(0,0,0);
 
-  // Tu podajemy ścieżkę do swoich 6 plików PNG, przemianowanych na px,nx,py,ny,pz,nz
-  skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures/skybox/sky1", scene);
-  skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-  skybox.material = skyboxMaterial;
+// TUTAJ wstaw swój link do repozytorium GitHub, do katalogu z 6 plikami
+// WAŻNE: link musi prowadzić do "Raw" GitHub: https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/textures/skybox/sky1
+skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
+  "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1",
+  scene
+);
+skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+skybox.material = skyboxMaterial;
 
-  // Punkty
-  let points = [];
-  let selectedPoint = null;
-  const pointMaterial = new BABYLON.StandardMaterial("pointMat", scene);
-  pointMaterial.emissiveColor = new BABYLON.Color3(0,1,1);
+// Punkty
+let points = [];
+let selectedPoint = null;
+const pointMaterial = new BABYLON.StandardMaterial("pointMat", scene);
+pointMaterial.emissiveColor = new BABYLON.Color3(0,1,1);
 
-  function addPoint(x,y,z){
-      const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`, {diameter:2}, scene);
-      sphere.position.set(x,y,z);
-      sphere.material = pointMaterial;
-      points.push(sphere);
+function addPoint(x,y,z){
+    const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`, {diameter:2}, scene);
+    sphere.position.set(x,y,z);
+    sphere.material = pointMaterial;
+    points.push(sphere);
 
-      sphere.actionManager = new BABYLON.ActionManager(scene);
-      sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
-          BABYLON.ActionManager.OnPickTrigger,
-          function(evt){ selectedPoint = evt.source; }
-      ));
-  }
+    sphere.actionManager = new BABYLON.ActionManager(scene);
+    sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+        BABYLON.ActionManager.OnPickTrigger,
+        function(evt){ selectedPoint = evt.source; }
+    ));
+}
 
-  // HUD - dodawanie punktów
-  document.getElementById('addPoint').addEventListener('click', ()=>{
-      const x = parseFloat(document.getElementById('xInput').value);
-      const y = parseFloat(document.getElementById('yInput').value);
-      const z = parseFloat(document.getElementById('zInput').value);
-      addPoint(x,y,z);
-  });
+// HUD - dodawanie punktów
+document.getElementById('addPoint').addEventListener('click', ()=>{
+    const x = parseFloat(document.getElementById('xInput').value);
+    const y = parseFloat(document.getElementById('yInput').value);
+    const z = parseFloat(document.getElementById('zInput').value);
+    addPoint(x,y,z);
+});
 
-  // HUD - zoom do wybranego punktu
-  document.getElementById('zoomToPoint').addEventListener('click', ()=>{
-      if(!selectedPoint) return;
-      const target = selectedPoint.position.clone();
-      const distance = 10;
+// HUD - zoom do wybranego punktu
+document.getElementById('zoomToPoint').addEventListener('click', ()=>{
+    if(!selectedPoint) return;
+    const target = selectedPoint.position.clone();
+    const distance = 10;
+    const direction = camera.position.subtract(camera.target).normalize().scale(distance);
+    const newPosition = target.add(direction);
 
-      // Obliczamy nową pozycję kamery w kierunku obecnego wektora
-      const direction = camera.position.subtract(camera.target).normalize().scale(distance);
-      const newPosition = target.add(direction);
+    BABYLON.Animation.CreateAndStartAnimation("camMove", camera, "position", 60, 60, camera.position.clone(), newPosition, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+    BABYLON.Animation.CreateAndStartAnimation("camTarget", camera, "target", 60, 60, camera.target.clone(), target, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+});
 
-      BABYLON.Animation.CreateAndStartAnimation("camMove", camera, "position", 60, 60, camera.position.clone(), newPosition, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-      BABYLON.Animation.CreateAndStartAnimation("camTarget", camera, "target", 60, 60, camera.target.clone(), target, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-  });
-
-  // Render loop
-  engine.runRenderLoop(()=>scene.render());
-  window.addEventListener("resize", ()=>engine.resize());
+// Render loop
+engine.runRenderLoop(()=>scene.render());
+window.addEventListener("resize", ()=>engine.resize());
 </script>
 
 </body>
