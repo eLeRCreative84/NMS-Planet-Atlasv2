@@ -50,8 +50,15 @@ skyboxMaterial.diffuseColor = new BABYLON.Color3(0,0,0);
 skyboxMaterial.specularColor = new BABYLON.Color3(0,0,0);
 
 // LINK DO TWOJEGO SKYBOXA NA GITHUB (Raw)
-skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
-  "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1.png",
+skyboxMaterial.reflectionTexture = new BABYLON.FilesCubeTexture(
+  [
+    "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1_px.png",
+    "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1_nx.png",
+    "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1_py.png",
+    "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1_ny.png",
+    "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1_pz.png",
+    "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1_nz.png"
+  ],
   scene
 );
 skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
@@ -103,4 +110,5 @@ window.addEventListener("resize", ()=>engine.resize());
 
 </body>
 </html>
+
 
