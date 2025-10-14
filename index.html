@@ -1,182 +1,112 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-<meta charset="utf-8">
-<title>Mapa 3D NMS - Regiony</title>
+<meta charset="UTF-8">
+<title>Mapa Regionów NMS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="https://cdn.babylonjs.com/babylon.js"></script>
 <style>
-body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
-#renderCanvas { width:100vw; height:100vh; display:block; touch-action:none; }
-#hud {
-  position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.6);
-  color:white; padding:10px; border-radius:5px; font-size:14px;
-}
-#hud input { width:100px; margin:2px; }
-#hud button { margin:3px; }
-#regionMap {
-  position:absolute; top:10px; right:10px; width:200px; height:200px;
-  background:rgba(255,255,255,0.1); border:1px solid white;
-  display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(5,1fr);
-}
-.regionTile { border:1px solid rgba(255,255,255,0.2); cursor:pointer; }
-.regionTile.active { background:rgba(0,255,0,0.3); }
+  body { margin:0; font-family:sans-serif; background:#111; color:white; display:flex; flex-direction:column; align-items:center; }
+  #hud { margin:10px; }
+  #grid {
+    display:grid;
+    grid-template-columns: repeat(4, 60px);
+    grid-template-rows: repeat(4, 60px);
+    gap:4px;
+  }
+  .regionTile {
+    background:#222;
+    border:1px solid #555;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+    transition:0.2s;
+  }
+  .regionTile:hover { background:#444; }
+  .selected { background:#0f0; }
+  button { margin:0 5px; padding:5px 10px; cursor:pointer; }
 </style>
 </head>
 <body>
-<canvas id="renderCanvas"></canvas>
 
 <div id="hud">
-  <div>X: <input type="number" id="xInput" value="0">
-      Y: <input type="number" id="yInput" value="0">
-      Z: <input type="number" id="zInput" value="0">
-  </div>
-  <div>Galactic: <input type="text" id="coordInput" placeholder="AAAA:BBBB:CCCC:DDDD"></div>
-  <div>
-    <button id="addPoint">Dodaj punkt w regionie</button>
-    <button id="zoomToPoint">Zoom</button>
-    <button id="editPoint">Edytuj</button>
-    <button id="deletePoint">Usuń</button>
-  </div>
+  <button id="zoomIn">+</button>
+  <button id="zoomOut">-</button>
+  <span id="levelLabel">Poziom: Galaktyka</span>
 </div>
 
-<div id="regionMap"></div>
+<div id="grid"></div>
 
 <script>
-const canvas = document.getElementById("renderCanvas");
-const engine = new BABYLON.Engine(canvas,true);
-const scene = new BABYLON.Scene(engine);
+// === Dane galaktyki ===
+const TOTAL_REGIONS = 256; // 256x256 regionów
+const GROUP_SIZE = 4;       // 4x4 regiony w grupie
+const LEVEL_LABELS = ["Galaktyka", "Grupa 4x4", "Region 1x1"];
 
-// === Kamera i światło ===
-const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/4, Math.PI/4, 200, new BABYLON.Vector3(0,0,0), scene);
-camera.attachControl(canvas,true);
-const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0,1,0), scene);
+// === Stan ===
+let currentLevel = 0; // 0=galaktyka, 1=grupa, 2=region
+let currentX = 0;     // start X grupy/regionu
+let currentZ = 0;     // start Z grupy/regionu
+let selectedTile = null;
 
-// === Skybox ===
-const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:10000}, scene);
-const skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
-skyboxMaterial.backFaceCulling=false;
-skyboxMaterial.disableLighting=true;
-skyboxMaterial.diffuseColor=new BABYLON.Color3(0,0,0);
-skyboxMaterial.specularColor=new BABYLON.Color3(0,0,0);
-skyboxMaterial.reflectionTexture=new BABYLON.CubeTexture("https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1", scene);
-skyboxMaterial.reflectionTexture.coordinatesMode=BABYLON.Texture.SKYBOX_MODE;
-skybox.material = skyboxMaterial;
+// === Elementy DOM ===
+const gridEl = document.getElementById("grid");
+const zoomInBtn = document.getElementById("zoomIn");
+const zoomOutBtn = document.getElementById("zoomOut");
+const levelLabel = document.getElementById("levelLabel");
 
-// === Regiony ===
-const REGION_WIDTH = 4096;
-const REGION_DEPTH = 4096;
-const REGION_HEIGHT = 256;
+// === Funkcja rysująca siatkę 4x4 ===
+function drawGrid() {
+  gridEl.innerHTML = "";
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      const tile = document.createElement("div");
+      tile.classList.add("regionTile");
 
-let points = [];
-let selectedPoint = null;
-let regions = {}; // { key: { node, points } }
+      // Obliczamy globalne współrzędne regionu
+      let regionX = currentX + i * (currentLevel < 2 ? GROUP_SIZE : 1);
+      let regionZ = currentZ + j * (currentLevel < 2 ? GROUP_SIZE : 1);
+      tile.dataset.x = regionX;
+      tile.dataset.z = regionZ;
 
-// Materiały punktów
-const pointMat = new BABYLON.StandardMaterial("pointMat", scene);
-pointMat.emissiveColor = new BABYLON.Color3(0,1,0);
-const selectedMat = new BABYLON.StandardMaterial("selectedMat", scene);
-selectedMat.emissiveColor = new BABYLON.Color3(1,0,0);
+      tile.textContent = `(${regionX},${regionZ})`;
 
-// === Funkcje ===
-function regionKey(x,z){ return `${Math.floor(x/REGION_WIDTH)}_${Math.floor(z/REGION_DEPTH)}`; }
+      tile.addEventListener("click", () => {
+        if (selectedTile) selectedTile.classList.remove("selected");
+        selectedTile = tile;
+        tile.classList.add("selected");
+      });
 
-function focusCameraOn(point,distance=50){
-  const target = point.position.clone();
-  const dir = camera.position.subtract(camera.target).normalize().scale(distance);
-  const newPos = target.add(dir);
-  BABYLON.Animation.CreateAndStartAnimation("camMove",camera,"position",60,60,camera.position.clone(),newPos,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-  BABYLON.Animation.CreateAndStartAnimation("camTarget",camera,"target",60,60,camera.target.clone(),target,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-}
-
-function addPoint(x,y,z,gal){
-  const key = regionKey(x,z);
-  if(!regions[key]){
-    const node = new BABYLON.TransformNode(key,scene);
-    regions[key]={ node: node, points: [] };
-    createRegionTile(key);
+      gridEl.appendChild(tile);
+    }
   }
-  const region = regions[key];
-  // Symulacja Z w regionie: ograniczamy do [0, REGION_HEIGHT]
-  y = Math.min(Math.max(y,0), REGION_HEIGHT);
-  const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`,{diameter:2},scene);
-  sphere.position.set(x,y,z);
-  sphere.material = pointMat.clone();
-  sphere.metadata = {galactic: gal};
-  sphere.parent = region.node;
-  region.points.push(sphere);
-  points.push(sphere);
-
-  // Kliknięcie
-  sphere.actionManager = new BABYLON.ActionManager(scene);
-  sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,()=>{
-    if(selectedPoint) selectedPoint.material = pointMat.clone();
-    selectedPoint = sphere; selectedPoint.material = selectedMat;
-    document.getElementById("xInput").value = sphere.position.x.toFixed(2);
-    document.getElementById("yInput").value = sphere.position.y.toFixed(2);
-    document.getElementById("zInput").value = sphere.position.z.toFixed(2);
-    document.getElementById("coordInput").value = gal || "";
-  }));
-
-  if(selectedPoint) selectedPoint.material = pointMat.clone();
-  selectedPoint = sphere; selectedPoint.material = selectedMat;
-  focusCameraOn(selectedPoint);
+  levelLabel.textContent = `Poziom: ${LEVEL_LABELS[currentLevel]}`;
 }
 
-// === Region map (2D siatka) ===
-function createRegionTile(key){
-  const map = document.getElementById("regionMap");
-  const tile = document.createElement("div");
-  tile.className="regionTile";
-  tile.dataset.key=key;
-  tile.title=key;
-  tile.addEventListener("click",()=>{
-    const reg = regions[key];
-    if(!reg) return;
-    const [ix,iz] = key.split("_").map(Number);
-    const cx = ix*REGION_WIDTH + REGION_WIDTH/2;
-    const cz = iz*REGION_DEPTH + REGION_DEPTH/2;
-    camera.setTarget(new BABYLON.Vector3(cx,REGION_HEIGHT/2,cz));
-    camera.alpha=Math.PI/4; camera.beta=Math.PI/4; camera.radius=200;
-    document.querySelectorAll(".regionTile").forEach(t=>t.classList.remove("active"));
-    tile.classList.add("active");
-  });
-  map.appendChild(tile);
-}
-
-// === HUD ===
-const xInput=document.getElementById("xInput");
-const yInput=document.getElementById("yInput");
-const zInput=document.getElementById("zInput");
-const coordInput=document.getElementById("coordInput");
-
-document.getElementById("addPoint").addEventListener("click",()=>{
-  const x=parseFloat(xInput.value);
-  const y=parseFloat(yInput.value);
-  const z=parseFloat(zInput.value);
-  const gal=coordInput.value.trim();
-  addPoint(x,y,z,gal);
+// === Przyciski zoom ===
+zoomInBtn.addEventListener("click", () => {
+  if (!selectedTile || currentLevel >= 2) return;
+  currentLevel++;
+  currentX = parseInt(selectedTile.dataset.x);
+  currentZ = parseInt(selectedTile.dataset.z);
+  selectedTile = null;
+  drawGrid();
 });
 
-document.getElementById("zoomToPoint").addEventListener("click",()=>{ if(selectedPoint) focusCameraOn(selectedPoint); });
-document.getElementById("editPoint").addEventListener("click",()=>{
-  if(!selectedPoint) return alert("Nie zaznaczono punktu!");
-  selectedPoint.position.set(parseFloat(xInput.value),parseFloat(yInput.value),parseFloat(zInput.value));
-  selectedPoint.metadata.galactic = coordInput.value.trim();
-});
-document.getElementById("deletePoint").addEventListener("click",()=>{
-  if(!selectedPoint) return alert("Nie zaznaczono punktu!");
-  const key = regionKey(selectedPoint.position.x, selectedPoint.position.z);
-  const region = regions[key];
-  if(region) region.points = region.points.filter(p=>p!==selectedPoint);
-  points = points.filter(p=>p!==selectedPoint);
-  selectedPoint.dispose();
-  selectedPoint=null;
+zoomOutBtn.addEventListener("click", () => {
+  if (currentLevel <= 0) return;
+  currentLevel--;
+  // cofamy do nadrzędnego regionu
+  currentX = Math.floor(currentX / GROUP_SIZE) * GROUP_SIZE;
+  currentZ = Math.floor(currentZ / GROUP_SIZE) * GROUP_SIZE;
+  selectedTile = null;
+  drawGrid();
 });
 
-// === Render ===
-engine.runRenderLoop(()=>scene.render());
-window.addEventListener("resize",()=>engine.resize());
+// === Inicjalizacja ===
+drawGrid();
 </script>
+
 </body>
 </html>
