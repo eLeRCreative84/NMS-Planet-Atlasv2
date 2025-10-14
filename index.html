@@ -2,19 +2,19 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8">
-<title>Mapa 3D z skyboxem z GitHub</title>
+<title>Mapa 3D z koordynatami NMS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.babylonjs.com/babylon.js"></script>
-<script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
 <style>
   body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
   #renderCanvas { width:100vw; height:100vh; touch-action:none; display:block; }
   #hud {
     position: absolute; top: 10px; left: 10px; padding:10px;
     background: rgba(0,0,0,0.6); color:white; border-radius:5px;
+    font-size:14px;
   }
-  #hud input { width:60px; margin-right:5px; }
-  #hud button { margin-left:5px; }
+  #hud input { width:120px; margin:2px; }
+  #hud button { margin:3px; }
 </style>
 </head>
 <body>
@@ -22,17 +22,27 @@
 <canvas id="renderCanvas"></canvas>
 
 <div id="hud">
-  X: <input type="number" id="xInput" value="0">
-  Y: <input type="number" id="yInput" value="0">
-  Z: <input type="number" id="zInput" value="0">
-  <br>
-  NMS: <input type="text" id="coordInput" placeholder="AAAA:BBBB:CCCC:DDDD" style="width:180px;">
-  <button id="addFromNMS">Dodaj NMS</button>
-  <br>
-  <button id="addPoint">Dodaj</button>
-  <button id="editPoint">Edytuj</button>
-  <button id="deletePoint">Usuń</button>
-  <button id="zoomToPoint">Zoom</button>
+  <div>
+    X: <input type="number" id="xInput" value="0">
+    Y: <input type="number" id="yInput" value="0">
+    Z: <input type="number" id="zInput" value="0">
+  </div>
+
+  <div>
+    Galactic: <input type="text" id="coordInput" placeholder="AAAA:BBBB:CCCC:DDDD">
+  </div>
+
+  <div>
+    Portal: <input type="text" id="portalInput" placeholder="003DFD6ACF8C">
+  </div>
+
+  <div>
+    <button id="addPoint">Dodaj</button>
+    <button id="addFromNMS">Dodaj NMS</button>
+    <button id="zoomToPoint">Zoom</button>
+    <button id="editPoint">Edytuj</button>
+    <button id="deletePoint">Usuń</button>
+  </div>
 </div>
   
 <script>
@@ -40,14 +50,12 @@ const canvas = document.getElementById("renderCanvas");
 const engine = new BABYLON.Engine(canvas, true);
 const scene = new BABYLON.Scene(engine);
 
-// Kamera orbitująca
+// === Kamera i światło ===
 const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/4, Math.PI/4, 100, new BABYLON.Vector3(0,0,0), scene);
 camera.attachControl(canvas, true);
-
-// Światło
 const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0,1,0), scene);
 
-// Skybox
+// === Skybox ===
 const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:10000}, scene);
 const skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
 skyboxMaterial.backFaceCulling = false;
@@ -61,59 +69,17 @@ skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
 skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
 skybox.material = skyboxMaterial;
 
-// === PUNKTY I WĘZŁY ===
+// === Punkty i połączenia ===
 let points = [];
 let lines = [];
 let selectedPoint = null;
 
 const pointMaterial = new BABYLON.StandardMaterial("pointMat", scene);
-pointMaterial.emissiveColor = new BABYLON.Color3(0, 1, 0); // zielony
-
+pointMaterial.emissiveColor = new BABYLON.Color3(0,1,0);
 const selectedMaterial = new BABYLON.StandardMaterial("selectedMat", scene);
-selectedMaterial.emissiveColor = new BABYLON.Color3(1, 0, 0); // czerwony
+selectedMaterial.emissiveColor = new BABYLON.Color3(1,0,0);
 
-function addPoint(x, y, z, system = null) {
-  const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`, { diameter: 2 }, scene);
-  sphere.position.set(x, y, z);
-  sphere.material = pointMaterial.clone();
-  sphere.metadata = { system };
-
-  // Kliknięcie w punkt
-  sphere.actionManager = new BABYLON.ActionManager(scene);
-  sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
-    BABYLON.ActionManager.OnPickTrigger,
-    function () {
-      if (selectedPoint) selectedPoint.material = pointMaterial.clone();
-      selectedPoint = sphere;
-      selectedPoint.material = selectedMaterial;
-
-      // Aktualizuj pola w HUD
-      document.getElementById("xInput").value = selectedPoint.position.x.toFixed(2);
-      document.getElementById("yInput").value = selectedPoint.position.y.toFixed(2);
-      document.getElementById("zInput").value = selectedPoint.position.z.toFixed(2);
-    }
-  ));
-
-  // Połączenie z poprzednim punktem
-  if (selectedPoint && selectedPoint !== sphere) {
-    const path = [selectedPoint.position, sphere.position];
-    const line = BABYLON.MeshBuilder.CreateLines("line", { points: path }, scene);
-    line.color = new BABYLON.Color3(1, 1, 0);
-    line.metadata = { a: selectedPoint, b: sphere };
-    lines.push(line);
-  }
-
-  points.push(sphere);
-
-  // Zaznacz nowy punkt
-  if (selectedPoint) selectedPoint.material = pointMaterial.clone();
-  selectedPoint = sphere;
-  selectedPoint.material = selectedMaterial;
-
-  // Kamera – zoom do nowego punktu
-  focusCameraOn(selectedPoint);
-}
-
+// === Funkcje pomocnicze ===
 function focusCameraOn(point) {
   const target = point.position.clone();
   const distance = 10;
@@ -125,75 +91,131 @@ function focusCameraOn(point) {
     camera.target.clone(), target, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
 }
 
-// === PARSER KOORDYNATÓW NMS ===
-function parseNMSCoords(str) {
-  const parts = str.trim().split(':');
-  if (parts.length !== 4) throw new Error("Zły format! Użyj AAAA:BBBB:CCCC:DDDD");
-  const [system, bx, by, bz] = parts;
-  const x = parseInt(bx, 16);
-  const y = parseInt(by, 16);
-  const z = parseInt(bz, 16);
-  if (isNaN(x) || isNaN(y) || isNaN(z)) throw new Error("Błędne współrzędne HEX!");
-  return { system, x, y, z };
+function addPoint(x, y, z, meta = {}) {
+  const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`, { diameter: 2 }, scene);
+  sphere.position.set(x, y, z);
+  sphere.material = pointMaterial.clone();
+  sphere.metadata = meta;
+
+  sphere.actionManager = new BABYLON.ActionManager(scene);
+  sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+    BABYLON.ActionManager.OnPickTrigger,
+    function() {
+      if (selectedPoint) selectedPoint.material = pointMaterial.clone();
+      selectedPoint = sphere;
+      selectedPoint.material = selectedMaterial;
+      document.getElementById("xInput").value = sphere.position.x;
+      document.getElementById("yInput").value = sphere.position.y;
+      document.getElementById("zInput").value = sphere.position.z;
+      if (sphere.metadata.galactic) document.getElementById("coordInput").value = sphere.metadata.galactic;
+      if (sphere.metadata.portal) document.getElementById("portalInput").value = sphere.metadata.portal;
+    }
+  ));
+
+  if (selectedPoint && selectedPoint !== sphere) {
+    const path = [selectedPoint.position, sphere.position];
+    const line = BABYLON.MeshBuilder.CreateLines("line", { points: path }, scene);
+    line.color = new BABYLON.Color3(1,1,0);
+    line.metadata = { a: selectedPoint, b: sphere };
+    lines.push(line);
+  }
+
+  points.push(sphere);
+  if (selectedPoint) selectedPoint.material = pointMaterial.clone();
+  selectedPoint = sphere;
+  selectedPoint.material = selectedMaterial;
+  focusCameraOn(sphere);
+}
+
+// === KONWERSJE ===
+function galacticToXYZ(g) {
+  const parts = g.split(':');
+  if (parts.length !== 4) throw new Error("Format AAAA:BBBB:CCCC:DDDD");
+  const [sys, bx, by, bz] = parts;
+  return { x: parseInt(bx, 16), y: parseInt(by, 16), z: parseInt(bz, 16), system: sys };
+}
+function xyzToGalactic(x,y,z) {
+  return `FFFF:${x.toString(16).padStart(4,'0')}:${y.toString(16).padStart(4,'0')}:${z.toString(16).padStart(4,'0')}`;
+}
+function xyzToPortal(x,y,z) {
+  // uproszczony mapping (nie 1:1 jak w grze, ale zachowuje unikalność)
+  return (x & 0xFFF).toString(16).padStart(4,'0') +
+         (y & 0xFFF).toString(16).padStart(4,'0') +
+         (z & 0xFFF).toString(16).padStart(4,'0');
+}
+function portalToXYZ(p) {
+  if (p.length !== 12) throw new Error("Portal ma 12 znaków hex!");
+  return {
+    x: parseInt(p.slice(0,4),16),
+    y: parseInt(p.slice(4,8),16),
+    z: parseInt(p.slice(8,12),16)
+  };
 }
 
 // === HUD ===
-document.getElementById('addPoint').addEventListener('click', () => {
-  const x = parseFloat(document.getElementById('xInput').value);
-  const y = parseFloat(document.getElementById('yInput').value);
-  const z = parseFloat(document.getElementById('zInput').value);
-  addPoint(x, y, z);
+document.getElementById('addPoint').addEventListener('click',()=>{
+  const x = parseFloat(xInput.value);
+  const y = parseFloat(yInput.value);
+  const z = parseFloat(zInput.value);
+  const gal = xyzToGalactic(x,y,z);
+  const portal = xyzToPortal(x,y,z);
+  addPoint(x,y,z,{galactic:gal,portal});
+  coordInput.value = gal;
+  portalInput.value = portal;
 });
 
-document.getElementById('addFromNMS').addEventListener('click', () => {
-  const coordStr = document.getElementById('coordInput').value.trim();
-  try {
-    const { system, x, y, z } = parseNMSCoords(coordStr);
-    addPoint(x, y, z, system);
-  } catch (e) {
-    alert(e.message);
+document.getElementById('addFromNMS').addEventListener('click',()=>{
+  const val = coordInput.value.trim();
+  if (val.includes(':')) {
+    try {
+      const {x,y,z,system} = galacticToXYZ(val);
+      const portal = xyzToPortal(x,y,z);
+      addPoint(x,y,z,{galactic:val,portal,system});
+      xInput.value = x; yInput.value = y; zInput.value = z;
+      portalInput.value = portal;
+    } catch(e){ alert(e.message); }
+  } else {
+    try {
+      const {x,y,z} = portalToXYZ(val);
+      const gal = xyzToGalactic(x,y,z);
+      addPoint(x,y,z,{galactic:gal,portal:val});
+      xInput.value = x; yInput.value = y; zInput.value = z;
+      coordInput.value = gal;
+    } catch(e){ alert(e.message); }
   }
 });
 
-document.getElementById('zoomToPoint').addEventListener('click', () => {
+document.getElementById('zoomToPoint').addEventListener('click',()=>{
   if (selectedPoint) focusCameraOn(selectedPoint);
 });
-
-document.getElementById('editPoint').addEventListener('click', () => {
+document.getElementById('editPoint').addEventListener('click',()=>{
   if (!selectedPoint) return alert("Nie zaznaczono punktu!");
-  const x = parseFloat(document.getElementById('xInput').value);
-  const y = parseFloat(document.getElementById('yInput').value);
-  const z = parseFloat(document.getElementById('zInput').value);
-  selectedPoint.position.set(x, y, z);
-
-  // Odśwież linie powiązane
-  lines.forEach(line => {
-    if (line.metadata.a === selectedPoint || line.metadata.b === selectedPoint) {
-      BABYLON.MeshBuilder.CreateLines(null, {
-        points: [line.metadata.a.position, line.metadata.b.position],
-        instance: line
-      });
-    }
+  const x=parseFloat(xInput.value), y=parseFloat(yInput.value), z=parseFloat(zInput.value);
+  selectedPoint.position.set(x,y,z);
+  const gal = xyzToGalactic(x,y,z);
+  const portal = xyzToPortal(x,y,z);
+  selectedPoint.metadata = {galactic:gal,portal};
+  coordInput.value = gal;
+  portalInput.value = portal;
+  lines.forEach(line=>{
+    if(line.metadata.a===selectedPoint||line.metadata.b===selectedPoint)
+      BABYLON.MeshBuilder.CreateLines(null,{points:[line.metadata.a.position,line.metadata.b.position],instance:line});
   });
 });
-
-document.getElementById('deletePoint').addEventListener('click', () => {
-  if (!selectedPoint) return alert("Nie zaznaczono punktu!");
-  lines = lines.filter(line => {
-    if (line.metadata.a === selectedPoint || line.metadata.b === selectedPoint) {
-      line.dispose();
-      return false;
-    }
+document.getElementById('deletePoint').addEventListener('click',()=>{
+  if(!selectedPoint) return alert("Nie zaznaczono punktu!");
+  lines = lines.filter(line=>{
+    if(line.metadata.a===selectedPoint||line.metadata.b===selectedPoint){ line.dispose(); return false;}
     return true;
   });
-  points = points.filter(p => p !== selectedPoint);
+  points = points.filter(p=>p!==selectedPoint);
   selectedPoint.dispose();
-  selectedPoint = null;
+  selectedPoint=null;
 });
 
-// Render loop
-engine.runRenderLoop(() => scene.render());
-window.addEventListener("resize", () => engine.resize());
+// === Render ===
+engine.runRenderLoop(()=>scene.render());
+window.addEventListener("resize",()=>engine.resize());
 </script>
 
 </body>
