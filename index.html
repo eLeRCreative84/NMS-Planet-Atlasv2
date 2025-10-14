@@ -38,7 +38,6 @@
 
   <div>
     <button id="addPoint">Dodaj</button>
-    
     <button id="zoomToPoint">Zoom</button>
     <button id="editPoint">Edytuj</button>
     <button id="deletePoint">Usuń</button>
@@ -80,9 +79,8 @@ const selectedMaterial = new BABYLON.StandardMaterial("selectedMat", scene);
 selectedMaterial.emissiveColor = new BABYLON.Color3(1,0,0);
 
 // === Funkcje pomocnicze ===
-function focusCameraOn(point) {
+function focusCameraOn(point, distance = 30) {
   const target = point.position.clone();
-  const distance = 20; // było 10 — teraz 2× dalej
   const direction = camera.position.subtract(camera.target).normalize().scale(distance);
   const newPosition = target.add(direction);
   BABYLON.Animation.CreateAndStartAnimation("camMove", camera, "position", 60, 60,
@@ -92,12 +90,13 @@ function focusCameraOn(point) {
 }
 
 function addPoint(x, y, z, meta = {}) {
+  // Tworzymy nowy punkt
   const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`, { diameter: 2 }, scene);
   sphere.position.set(x, y, z);
   sphere.material = pointMaterial.clone();
   sphere.metadata = meta;
 
-  // Połączenie z poprzednim punktem
+  // Połączenie z poprzednim punktem (jeśli był wybrany)
   if (selectedPoint && selectedPoint !== sphere) {
     const path = [selectedPoint.position, sphere.position];
     const line = BABYLON.MeshBuilder.CreateLines("line", { points: path }, scene);
@@ -108,23 +107,40 @@ function addPoint(x, y, z, meta = {}) {
 
   points.push(sphere);
 
-  // Zmieniamy zaznaczenie na nowy punkt 
+  // Kliknięcie w punkt (zaznaczenie)
+  sphere.actionManager = new BABYLON.ActionManager(scene);
+  sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+    BABYLON.ActionManager.OnPickTrigger,
+    function() {
+      if (selectedPoint) selectedPoint.material = pointMaterial.clone();
+      selectedPoint = sphere;
+      selectedPoint.material = selectedMaterial;
+
+      const meta = selectedPoint.metadata || {};
+      document.getElementById("xInput").value = selectedPoint.position.x.toFixed(2);
+      document.getElementById("yInput").value = selectedPoint.position.y.toFixed(2);
+      document.getElementById("zInput").value = selectedPoint.position.z.toFixed(2);
+      document.getElementById("coordInput").value = meta.galactic || "";
+      document.getElementById("portalInput").value = meta.portal || "";
+    }
+  ));
+
+  // Zmieniamy zaznaczenie na nowy punkt
   if (selectedPoint) selectedPoint.material = pointMaterial.clone();
   selectedPoint = sphere;
   selectedPoint.material = selectedMaterial;
 
-  // Aktualizujemy HUD
+  // Aktualizujemy HUD po dodaniu nowego punktu
   document.getElementById("xInput").value = x.toFixed(2);
   document.getElementById("yInput").value = y.toFixed(2);
   document.getElementById("zInput").value = z.toFixed(2);
-  if (meta.galactic) document.getElementById("coordInput").value = meta.galactic;
-  if (meta.portal) document.getElementById("portalInput").value = meta.portal;
+  document.getElementById("coordInput").value = meta.galactic || "";
+  document.getElementById("portalInput").value = meta.portal || "";
 
-  // Kamera – zoom do nowego punktu 
-  focusCameraOn(selectedPoint, 30);
+  focusCameraOn(selectedPoint);
 }
 
-// === KONWERSJE ===
+// === Konwersje ===
 function galacticToXYZ(g) {
   const parts = g.split(':');
   if (parts.length !== 4) throw new Error("Format AAAA:BBBB:CCCC:DDDD");
@@ -135,7 +151,6 @@ function xyzToGalactic(x,y,z) {
   return `FFFF:${x.toString(16).padStart(4,'0')}:${y.toString(16).padStart(4,'0')}:${z.toString(16).padStart(4,'0')}`;
 }
 function xyzToPortal(x,y,z) {
-  // uproszczony mapping (nie 1:1 jak w grze, ale zachowuje unikalność)
   return (x & 0xFFF).toString(16).padStart(4,'0') +
          (y & 0xFFF).toString(16).padStart(4,'0') +
          (z & 0xFFF).toString(16).padStart(4,'0');
@@ -153,29 +168,20 @@ function portalToXYZ(p) {
 document.getElementById('addPoint').addEventListener('click',()=>{
   const coordVal = coordInput.value.trim();
   const portalVal = portalInput.value.trim();
-  
+
   let x, y, z, gal, portal;
 
   if (coordVal.includes(':')) {
-    // Wprowadzono galactic coordinates
-    try {
-      const res = galacticToXYZ(coordVal);
-      x = res.x; y = res.y; z = res.z;
-      gal = coordVal;
-      portal = xyzToPortal(x,y,z);
-    } catch(e){ return alert(e.message); }
-
+    const res = galacticToXYZ(coordVal);
+    x = res.x; y = res.y; z = res.z;
+    gal = coordVal;
+    portal = xyzToPortal(x,y,z);
   } else if (portalVal.length === 12) {
-    // Wprowadzono portal address
-    try {
-      const res = portalToXYZ(portalVal);
-      x = res.x; y = res.y; z = res.z;
-      gal = xyzToGalactic(x,y,z);
-      portal = portalVal;
-    } catch(e){ return alert(e.message); }
-
+    const res = portalToXYZ(portalVal);
+    x = res.x; y = res.y; z = res.z;
+    gal = xyzToGalactic(x,y,z);
+    portal = portalVal;
   } else {
-    // Klasyczne XYZ
     x = parseFloat(xInput.value);
     y = parseFloat(yInput.value);
     z = parseFloat(zInput.value);
@@ -184,8 +190,6 @@ document.getElementById('addPoint').addEventListener('click',()=>{
   }
 
   addPoint(x,y,z,{galactic:gal,portal});
-  xInput.value = x; yInput.value = y; zInput.value = z;
-  coordInput.value = gal; portalInput.value = portal;
 });
 
 document.getElementById('zoomToPoint').addEventListener('click',()=>{
@@ -223,6 +227,3 @@ window.addEventListener("resize",()=>engine.resize());
 
 </body>
 </html>
-
-
-
