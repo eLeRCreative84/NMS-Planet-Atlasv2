@@ -2,44 +2,38 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8">
-<title>Mapa 3D NMS - Regiony z Siatką</title>
+<title>Mapa 3D NMS - Regiony</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.babylonjs.com/babylon.js"></script>
 <style>
-  body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
-  #renderCanvas { width:100vw; height:100vh; display:block; touch-action:none; }
-  #hud {
-    position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.6);
-    color:white; padding:10px; border-radius:5px; font-size:14px;
-  }
-  #hud input { width:120px; margin:2px; }
-  #hud button { margin:3px; }
-  #regionMap {
-    position:absolute; top:10px; right:10px; width:200px; height:200px;
-    background:rgba(255,255,255,0.1); border:1px solid white;
-    display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(5,1fr);
-  }
-  .regionTile { border:1px solid rgba(255,255,255,0.2); cursor:pointer; }
-  .regionTile.active { background:rgba(0,255,0,0.3); }
+body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
+#renderCanvas { width:100vw; height:100vh; display:block; touch-action:none; }
+#hud {
+  position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.6);
+  color:white; padding:10px; border-radius:5px; font-size:14px;
+}
+#hud input { width:100px; margin:2px; }
+#hud button { margin:3px; }
+#regionMap {
+  position:absolute; top:10px; right:10px; width:200px; height:200px;
+  background:rgba(255,255,255,0.1); border:1px solid white;
+  display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(5,1fr);
+}
+.regionTile { border:1px solid rgba(255,255,255,0.2); cursor:pointer; }
+.regionTile.active { background:rgba(0,255,0,0.3); }
 </style>
 </head>
 <body>
 <canvas id="renderCanvas"></canvas>
 
 <div id="hud">
-  <div>
-    X: <input type="number" id="xInput" value="0">
-    Y: <input type="number" id="yInput" value="0">
-    Z: <input type="number" id="zInput" value="0">
+  <div>X: <input type="number" id="xInput" value="0">
+      Y: <input type="number" id="yInput" value="0">
+      Z: <input type="number" id="zInput" value="0">
   </div>
+  <div>Galactic: <input type="text" id="coordInput" placeholder="AAAA:BBBB:CCCC:DDDD"></div>
   <div>
-    Galactic: <input type="text" id="coordInput" placeholder="AAAA:BBBB:CCCC:DDDD">
-  </div>
-  <div>
-    Portal: <input type="text" id="portalInput" placeholder="003DFD6ACF8C">
-  </div>
-  <div>
-    <button id="addPoint">Dodaj</button>
+    <button id="addPoint">Dodaj punkt w regionie</button>
     <button id="zoomToPoint">Zoom</button>
     <button id="editPoint">Edytuj</button>
     <button id="deletePoint">Usuń</button>
@@ -75,22 +69,17 @@ const REGION_DEPTH = 4096;
 const REGION_HEIGHT = 256;
 
 let points = [];
-let lines = [];
 let selectedPoint = null;
-let regions = {}; // { "ix_iz": { node: TransformNode, points: [] } }
+let regions = {}; // { key: { node, points } }
 
 // Materiały punktów
-const pointMaterial = new BABYLON.StandardMaterial("pointMat", scene);
-pointMaterial.emissiveColor = new BABYLON.Color3(0,1,0);
-const selectedMaterial = new BABYLON.StandardMaterial("selectedMat", scene);
-selectedMaterial.emissiveColor = new BABYLON.Color3(1,0,0);
+const pointMat = new BABYLON.StandardMaterial("pointMat", scene);
+pointMat.emissiveColor = new BABYLON.Color3(0,1,0);
+const selectedMat = new BABYLON.StandardMaterial("selectedMat", scene);
+selectedMat.emissiveColor = new BABYLON.Color3(1,0,0);
 
 // === Funkcje ===
-function regionKeyFromPosition(x,z){
-  const ix=Math.floor(x/REGION_WIDTH);
-  const iz=Math.floor(z/REGION_DEPTH);
-  return `${ix}_${iz}`;
-}
+function regionKey(x,z){ return `${Math.floor(x/REGION_WIDTH)}_${Math.floor(z/REGION_DEPTH)}`; }
 
 function focusCameraOn(point,distance=50){
   const target = point.position.clone();
@@ -100,160 +89,92 @@ function focusCameraOn(point,distance=50){
   BABYLON.Animation.CreateAndStartAnimation("camTarget",camera,"target",60,60,camera.target.clone(),target,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
 }
 
-function addPoint(x,y,z,meta={}){
-  const key = regionKeyFromPosition(x,z);
+function addPoint(x,y,z,gal){
+  const key = regionKey(x,z);
   if(!regions[key]){
     const node = new BABYLON.TransformNode(key,scene);
-    regions[key] = { node: node, points: [] };
+    regions[key]={ node: node, points: [] };
     createRegionTile(key);
   }
   const region = regions[key];
-  const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`, {diameter:2}, scene);
+  // Symulacja Z w regionie: ograniczamy do [0, REGION_HEIGHT]
+  y = Math.min(Math.max(y,0), REGION_HEIGHT);
+  const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`,{diameter:2},scene);
   sphere.position.set(x,y,z);
-  sphere.material = pointMaterial.clone();
-  sphere.metadata = meta;
+  sphere.material = pointMat.clone();
+  sphere.metadata = {galactic: gal};
   sphere.parent = region.node;
   region.points.push(sphere);
   points.push(sphere);
 
-  // Linie
-  if(selectedPoint && selectedPoint!==sphere){
-    const line = BABYLON.MeshBuilder.CreateLines("line",{points:[selectedPoint.position,sphere.position]},scene);
-    line.color = new BABYLON.Color3(1,1,0);
-    line.metadata = {a:selectedPoint,b:sphere};
-    lines.push(line);
-  }
-
-  // Kliknięcie w punkt
+  // Kliknięcie
   sphere.actionManager = new BABYLON.ActionManager(scene);
-  sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
-    BABYLON.ActionManager.OnPickTrigger, ()=>{
-      if(selectedPoint) selectedPoint.material = pointMaterial.clone();
-      selectedPoint = sphere;
-      selectedPoint.material = selectedMaterial;
-      const meta = selectedPoint.metadata || {};
-      document.getElementById("xInput").value = selectedPoint.position.x.toFixed(2);
-      document.getElementById("yInput").value = selectedPoint.position.y.toFixed(2);
-      document.getElementById("zInput").value = selectedPoint.position.z.toFixed(2);
-      document.getElementById("coordInput").value = meta.galactic||"";
-      document.getElementById("portalInput").value = meta.portal||"";
-    }
-  ));
+  sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,()=>{
+    if(selectedPoint) selectedPoint.material = pointMat.clone();
+    selectedPoint = sphere; selectedPoint.material = selectedMat;
+    document.getElementById("xInput").value = sphere.position.x.toFixed(2);
+    document.getElementById("yInput").value = sphere.position.y.toFixed(2);
+    document.getElementById("zInput").value = sphere.position.z.toFixed(2);
+    document.getElementById("coordInput").value = gal || "";
+  }));
 
-  if(selectedPoint) selectedPoint.material = pointMaterial.clone();
-  selectedPoint = sphere;
-  selectedPoint.material = selectedMaterial;
-
-  // HUD
-  document.getElementById("xInput").value = x.toFixed(2);
-  document.getElementById("yInput").value = y.toFixed(2);
-  document.getElementById("zInput").value = z.toFixed(2);
-  if(meta.galactic) document.getElementById("coordInput").value = meta.galactic;
-  if(meta.portal) document.getElementById("portalInput").value = meta.portal;
-
+  if(selectedPoint) selectedPoint.material = pointMat.clone();
+  selectedPoint = sphere; selectedPoint.material = selectedMat;
   focusCameraOn(selectedPoint);
 }
 
-// === Tworzenie kafelka regionu w siatce ===
+// === Region map (2D siatka) ===
 function createRegionTile(key){
   const map = document.getElementById("regionMap");
   const tile = document.createElement("div");
-  tile.className = "regionTile";
-  tile.dataset.key = key;
-  tile.title = key;
-  tile.addEventListener("click", ()=>{
+  tile.className="regionTile";
+  tile.dataset.key=key;
+  tile.title=key;
+  tile.addEventListener("click",()=>{
     const reg = regions[key];
     if(!reg) return;
-    // Przenieś kamerę do środka regionu
     const [ix,iz] = key.split("_").map(Number);
     const cx = ix*REGION_WIDTH + REGION_WIDTH/2;
     const cz = iz*REGION_DEPTH + REGION_DEPTH/2;
-    const cy = REGION_HEIGHT/2;
-    camera.setTarget(new BABYLON.Vector3(cx,cy,cz));
+    camera.setTarget(new BABYLON.Vector3(cx,REGION_HEIGHT/2,cz));
     camera.alpha=Math.PI/4; camera.beta=Math.PI/4; camera.radius=200;
-    // Aktywuj kafelek
     document.querySelectorAll(".regionTile").forEach(t=>t.classList.remove("active"));
     tile.classList.add("active");
   });
   map.appendChild(tile);
 }
 
-// === Konwersje (Galactic i Portal) ===
-function galacticToXYZ(g){
-  const parts=g.split(':');
-  if(parts.length!==4) throw new Error("Format AAAA:BBBB:CCCC:DDDD");
-  const [region,sx,sy,szStr]=parts;
-  const x=parseInt(sx,16)-2048;
-  const y=parseInt(sy,16)-128;
-  const z=parseInt(szStr,16)-2048;
-  return {x,y,z,system:region,id:szStr};
-}
-function xyzToGalactic(x,y,z,system="FFFF",id="0000"){
-  const sx=(x+2048).toString(16).padStart(4,'0').toUpperCase();
-  const sy=(y+128).toString(16).padStart(4,'0').toUpperCase();
-  const sz=id.toString().padStart(4,'0').toUpperCase();
-  return `${system}:${sx}:${sy}:${sz}`;
-}
-function xyzToPortal(x,y,z){
-  const px = ((x+2048)&0xFFF).toString(16).padStart(3,'0');
-  const py = ((y+128)&0xFF).toString(16).padStart(2,'0');
-  const pz = ((z+2048)&0xFFF).toString(16).padStart(3,'0');
-  return `003${px}${py}${pz}`.toUpperCase();
-}
-function portalToXYZ(p){
-  if(p.length<9) throw new Error("Niepoprawny portal address");
-  const x=parseInt(p.slice(3,6),16)-2048;
-  const y=parseInt(p.slice(6,8),16)-128;
-  const z=parseInt(p.slice(8,11),16)-2048;
-  return {x,y,z};
-}
-
 // === HUD ===
-const xInput = document.getElementById("xInput");
-const yInput = document.getElementById("yInput");
-const zInput = document.getElementById("zInput");
-const coordInput = document.getElementById("coordInput");
-const portalInput = document.getElementById("portalInput");
+const xInput=document.getElementById("xInput");
+const yInput=document.getElementById("yInput");
+const zInput=document.getElementById("zInput");
+const coordInput=document.getElementById("coordInput");
 
 document.getElementById("addPoint").addEventListener("click",()=>{
-  let x,y,z,gal,portal;
-  const cVal = coordInput.value.trim();
-  const pVal = portalInput.value.trim();
-  if(cVal.includes(":")){
-    const res=galacticToXYZ(cVal); x=res.x; y=res.y; z=res.z; gal=cVal; portal=xyzToPortal(x,y,z);
-  } else if(pVal.length===12){
-    const res=portalToXYZ(pVal); x=res.x; y=res.y; z=res.z; gal=xyzToGalactic(x,y,z); portal=pVal;
-  } else {
-    x=parseFloat(xInput.value); y=parseFloat(yInput.value); z=parseFloat(zInput.value);
-    gal=xyzToGalactic(x,y,z); portal=xyzToPortal(x,y,z);
-  }
-  addPoint(x,y,z,{galactic:gal,portal});
+  const x=parseFloat(xInput.value);
+  const y=parseFloat(yInput.value);
+  const z=parseFloat(zInput.value);
+  const gal=coordInput.value.trim();
+  addPoint(x,y,z,gal);
 });
 
 document.getElementById("zoomToPoint").addEventListener("click",()=>{ if(selectedPoint) focusCameraOn(selectedPoint); });
 document.getElementById("editPoint").addEventListener("click",()=>{
   if(!selectedPoint) return alert("Nie zaznaczono punktu!");
-  const x=parseFloat(xInput.value), y=parseFloat(yInput.value), z=parseFloat(zInput.value);
-  selectedPoint.position.set(x,y,z);
-  const gal=xyzToGalactic(x,y,z); const portal=xyzToPortal(x,y,z);
-  selectedPoint.metadata={galactic:gal,portal};
-  coordInput.value=gal; portalInput.value=portal;
-  lines.forEach(line=>{
-    if(line.metadata.a===selectedPoint||line.metadata.b===selectedPoint)
-      BABYLON.MeshBuilder.CreateLines(null,{points:[line.metadata.a.position,line.metadata.b.position],instance:line});
-  });
+  selectedPoint.position.set(parseFloat(xInput.value),parseFloat(yInput.value),parseFloat(zInput.value));
+  selectedPoint.metadata.galactic = coordInput.value.trim();
 });
 document.getElementById("deletePoint").addEventListener("click",()=>{
   if(!selectedPoint) return alert("Nie zaznaczono punktu!");
-  lines = lines.filter(line=>{
-    if(line.metadata.a===selectedPoint||line.metadata.b===selectedPoint){ line.dispose(); return false;}
-    return true;
-  });
+  const key = regionKey(selectedPoint.position.x, selectedPoint.position.z);
+  const region = regions[key];
+  if(region) region.points = region.points.filter(p=>p!==selectedPoint);
   points = points.filter(p=>p!==selectedPoint);
-  selectedPoint.dispose(); selectedPoint=null;
+  selectedPoint.dispose();
+  selectedPoint=null;
 });
 
-// === Render loop ===
+// === Render ===
 engine.runRenderLoop(()=>scene.render());
 window.addEventListener("resize",()=>engine.resize());
 </script>
