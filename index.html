@@ -124,22 +124,6 @@ function addPoint(x, y, z, meta = {}) {
   focusCameraOn(selectedPoint, 30);
 }
 
-
-  if (selectedPoint && selectedPoint !== sphere) {
-    const path = [selectedPoint.position, sphere.position];
-    const line = BABYLON.MeshBuilder.CreateLines("line", { points: path }, scene);
-    line.color = new BABYLON.Color3(1,1,0);
-    line.metadata = { a: selectedPoint, b: sphere };
-    lines.push(line);
-  }
-
-  points.push(sphere);
-  if (selectedPoint) selectedPoint.material = pointMaterial.clone();
-  selectedPoint = sphere;
-  selectedPoint.material = selectedMaterial;
-  focusCameraOn(sphere);
-}
-
 // === KONWERSJE ===
 function galacticToXYZ(g) {
   const parts = g.split(':');
@@ -239,5 +223,6 @@ window.addEventListener("resize",()=>engine.resize());
 
 </body>
 </html>
+
 
 
