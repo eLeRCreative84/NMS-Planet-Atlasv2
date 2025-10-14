@@ -38,7 +38,7 @@
 
   <div>
     <button id="addPoint">Dodaj</button>
-    <button id="addFromNMS">Dodaj NMS</button>
+    
     <button id="zoomToPoint">Zoom</button>
     <button id="editPoint">Edytuj</button>
     <button id="deletePoint">Usuń</button>
@@ -82,7 +82,7 @@ selectedMaterial.emissiveColor = new BABYLON.Color3(1,0,0);
 // === Funkcje pomocnicze ===
 function focusCameraOn(point) {
   const target = point.position.clone();
-  const distance = 10;
+  const distance = 20; // było 10 — teraz 2× dalej
   const direction = camera.position.subtract(camera.target).normalize().scale(distance);
   const newPosition = target.add(direction);
   BABYLON.Animation.CreateAndStartAnimation("camMove", camera, "position", 60, 60,
@@ -154,35 +154,41 @@ function portalToXYZ(p) {
 
 // === HUD ===
 document.getElementById('addPoint').addEventListener('click',()=>{
-  const x = parseFloat(xInput.value);
-  const y = parseFloat(yInput.value);
-  const z = parseFloat(zInput.value);
-  const gal = xyzToGalactic(x,y,z);
-  const portal = xyzToPortal(x,y,z);
-  addPoint(x,y,z,{galactic:gal,portal});
-  coordInput.value = gal;
-  portalInput.value = portal;
-});
+  const coordVal = coordInput.value.trim();
+  const portalVal = portalInput.value.trim();
+  
+  let x, y, z, gal, portal;
 
-document.getElementById('addFromNMS').addEventListener('click',()=>{
-  const val = coordInput.value.trim();
-  if (val.includes(':')) {
+  if (coordVal.includes(':')) {
+    // Wprowadzono galactic coordinates
     try {
-      const {x,y,z,system} = galacticToXYZ(val);
-      const portal = xyzToPortal(x,y,z);
-      addPoint(x,y,z,{galactic:val,portal,system});
-      xInput.value = x; yInput.value = y; zInput.value = z;
-      portalInput.value = portal;
-    } catch(e){ alert(e.message); }
+      const res = galacticToXYZ(coordVal);
+      x = res.x; y = res.y; z = res.z;
+      gal = coordVal;
+      portal = xyzToPortal(x,y,z);
+    } catch(e){ return alert(e.message); }
+
+  } else if (portalVal.length === 12) {
+    // Wprowadzono portal address
+    try {
+      const res = portalToXYZ(portalVal);
+      x = res.x; y = res.y; z = res.z;
+      gal = xyzToGalactic(x,y,z);
+      portal = portalVal;
+    } catch(e){ return alert(e.message); }
+
   } else {
-    try {
-      const {x,y,z} = portalToXYZ(val);
-      const gal = xyzToGalactic(x,y,z);
-      addPoint(x,y,z,{galactic:gal,portal:val});
-      xInput.value = x; yInput.value = y; zInput.value = z;
-      coordInput.value = gal;
-    } catch(e){ alert(e.message); }
+    // Klasyczne XYZ
+    x = parseFloat(xInput.value);
+    y = parseFloat(yInput.value);
+    z = parseFloat(zInput.value);
+    gal = xyzToGalactic(x,y,z);
+    portal = xyzToPortal(x,y,z);
   }
+
+  addPoint(x,y,z,{galactic:gal,portal});
+  xInput.value = x; yInput.value = y; zInput.value = z;
+  coordInput.value = gal; portalInput.value = portal;
 });
 
 document.getElementById('zoomToPoint').addEventListener('click',()=>{
@@ -220,3 +226,4 @@ window.addEventListener("resize",()=>engine.resize());
 
 </body>
 </html>
+
