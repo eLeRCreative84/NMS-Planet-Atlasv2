@@ -1,111 +1,195 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-<meta charset="UTF-8">
-<title>Mapa Regionów NMS</title>
+<meta charset="utf-8">
+<title>Mapa NMS 3D z Regionami</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
 <style>
-  body { margin:0; font-family:sans-serif; background:#111; color:white; display:flex; flex-direction:column; align-items:center; }
-  #hud { margin:10px; }
-  #grid {
+  body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
+  #renderCanvas { width:100vw; height:100vh; touch-action:none; display:block; }
+  #hud {
+    position: absolute; top: 10px; left: 10px; padding:10px;
+    background: rgba(0,0,0,0.6); color:white; border-radius:5px;
+    font-size:14px;
+    display:flex; flex-direction:column;
+    gap:5px;
+  }
+  #coordInputs input { width:60px; }
+  #regionGrid {
     display:grid;
-    grid-template-columns: repeat(4, 60px);
-    grid-template-rows: repeat(4, 60px);
-    gap:4px;
+    grid-template-columns: repeat(4, 40px);
+    grid-template-rows: repeat(4, 40px);
+    gap:2px;
   }
-  .regionTile {
-    background:#222;
-    border:1px solid #555;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    cursor:pointer;
-    user-select:none;
-    transition:0.2s;
-  }
-  .regionTile:hover { background:#444; }
-  .selected { background:#0f0; }
-  button { margin:0 5px; padding:5px 10px; cursor:pointer; }
+  .tile { background:#222; cursor:pointer; }
+  .tile.selected { background:#0f0; }
+  #navButtons { margin-top:5px; }
+  #navButtons button { margin-right:5px; }
 </style>
 </head>
 <body>
+<canvas id="renderCanvas"></canvas>
 
 <div id="hud">
-  <button id="zoomIn">+</button>
-  <button id="zoomOut">-</button>
-  <span id="levelLabel">Poziom: Galaktyka</span>
+  <div id="coordInputs">
+    X: <input type="number" id="xInput" value="0">
+    Y: <input type="number" id="yInput" value="0">
+    Z: <input type="number" id="zInput" value="0">
+  </div>
+  <div id="regionGrid"></div>
+  <div id="navButtons">
+    <button id="zoomIn">+</button>
+    <button id="zoomOut">-</button>
+  </div>
+  <div>
+    <button id="addPoint">Dodaj</button>
+    <button id="editPoint">Edytuj</button>
+    <button id="deletePoint">Usuń</button>
+  </div>
 </div>
 
-<div id="grid"></div>
-
 <script>
-// === Dane galaktyki ===
-const TOTAL_REGIONS = 256; // 256x256 regionów
-const GROUP_SIZE = 4;       // 4x4 regiony w grupie
-const LEVEL_LABELS = ["Galaktyka", "Grupa 4x4", "Region 1x1"];
+const canvas = document.getElementById("renderCanvas");
+const engine = new BABYLON.Engine(canvas, true);
+const scene = new BABYLON.Scene(engine);
 
-// === Stan ===
-let currentLevel = 0; // 0=galaktyka, 1=grupa, 2=region
-let currentX = 0;     // start X grupy/regionu
-let currentZ = 0;     // start Z grupy/regionu
+// === Kamera i światło ===
+const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/4, Math.PI/4, 100, new BABYLON.Vector3(0,0,0), scene);
+camera.attachControl(canvas, true);
+const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0,1,0), scene);
+
+// === Skybox ===
+const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:10000}, scene);
+const skyboxMaterial = new BABYLON.StandardMaterial("skyBoxMat", scene);
+skyboxMaterial.backFaceCulling = false;
+skyboxMaterial.disableLighting = true;
+skyboxMaterial.diffuseColor = new BABYLON.Color3(0,0,0);
+skyboxMaterial.specularColor = new BABYLON.Color3(0,0,0);
+skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
+  "https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1",
+  scene
+);
+skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+skybox.material = skyboxMaterial;
+
+// === Punkty ===
+let points = [];
+let lines = [];
+let selectedPoint = null;
+const pointMat = new BABYLON.StandardMaterial("pointMat", scene);
+pointMat.emissiveColor = new BABYLON.Color3(0,1,0);
+const selectedMat = new BABYLON.StandardMaterial("selectedMat", scene);
+selectedMat.emissiveColor = new BABYLON.Color3(1,0,0);
+
+// === REGIONY ===
+let currentLevel = 0; // 0=galaktyka, 1=grupa 16 regionów
+let currentX = 0; // start X w regionach
+let currentZ = 0; // start Z w regionach
 let selectedTile = null;
 
-// === Elementy DOM ===
-const gridEl = document.getElementById("grid");
-const zoomInBtn = document.getElementById("zoomIn");
-const zoomOutBtn = document.getElementById("zoomOut");
-const levelLabel = document.getElementById("levelLabel");
-
-// === Funkcja rysująca siatkę 4x4 ===
-function drawGrid() {
-  gridEl.innerHTML = "";
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 4; j++) {
+// Generujemy prostą siatkę regionów w HUD
+const regionGridEl = document.getElementById("regionGrid");
+function drawRegionGrid() {
+  regionGridEl.innerHTML = "";
+  for (let i=0;i<4;i++){
+    for (let j=0;j<4;j++){
       const tile = document.createElement("div");
-      tile.classList.add("regionTile");
-
-      // Obliczamy globalne współrzędne regionu
-      let regionX = currentX + i * (currentLevel < 2 ? GROUP_SIZE : 1);
-      let regionZ = currentZ + j * (currentLevel < 2 ? GROUP_SIZE : 1);
-      tile.dataset.x = regionX;
-      tile.dataset.z = regionZ;
-
-      tile.textContent = `(${regionX},${regionZ})`;
-
-      tile.addEventListener("click", () => {
-        if (selectedTile) selectedTile.classList.remove("selected");
+      tile.className = "tile";
+      let rx = currentX + i*(currentLevel===0?4:1);
+      let rz = currentZ + j*(currentLevel===0?4:1);
+      tile.dataset.x = rx;
+      tile.dataset.z = rz;
+      tile.addEventListener("click", ()=>{
+        if(selectedTile) selectedTile.classList.remove("selected");
         selectedTile = tile;
         tile.classList.add("selected");
       });
-
-      gridEl.appendChild(tile);
+      regionGridEl.appendChild(tile);
     }
   }
-  levelLabel.textContent = `Poziom: ${LEVEL_LABELS[currentLevel]}`;
 }
 
-// === Przyciski zoom ===
-zoomInBtn.addEventListener("click", () => {
-  if (!selectedTile || currentLevel >= 2) return;
+// === Nawigacja + / - ===
+document.getElementById("zoomIn").addEventListener("click", ()=>{
+  if(!selectedTile || currentLevel>=1) return;
   currentLevel++;
   currentX = parseInt(selectedTile.dataset.x);
   currentZ = parseInt(selectedTile.dataset.z);
   selectedTile = null;
-  drawGrid();
+  drawRegionGrid();
 });
 
-zoomOutBtn.addEventListener("click", () => {
-  if (currentLevel <= 0) return;
+document.getElementById("zoomOut").addEventListener("click", ()=>{
+  if(currentLevel<=0) return;
   currentLevel--;
-  // cofamy do nadrzędnego regionu
-  currentX = Math.floor(currentX / GROUP_SIZE) * GROUP_SIZE;
-  currentZ = Math.floor(currentZ / GROUP_SIZE) * GROUP_SIZE;
+  currentX = Math.floor(currentX/4)*4;
+  currentZ = Math.floor(currentZ/4)*4;
   selectedTile = null;
-  drawGrid();
+  drawRegionGrid();
 });
 
-// === Inicjalizacja ===
-drawGrid();
+// === Dodawanie punktów w obrębie regionu ===
+function focusCameraOn(point, distance=30){
+  const target = point.position.clone();
+  const dir = camera.position.subtract(camera.target).normalize().scale(distance);
+  const newPos = target.add(dir);
+  BABYLON.Animation.CreateAndStartAnimation("camMove", camera,"position",60,60,camera.position.clone(),newPos,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+  BABYLON.Animation.CreateAndStartAnimation("camTarget", camera,"target",60,60,camera.target.clone(),target,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+}
+
+function addPoint(x,y,z){
+  const s = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`,{diameter:2},scene);
+  s.position.set(x,y,z);
+  s.material = pointMat.clone();
+  s.actionManager = new BABYLON.ActionManager(scene);
+  s.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,()=>{
+    if(selectedPoint) selectedPoint.material = pointMat.clone();
+    selectedPoint = s;
+    selectedPoint.material = selectedMat;
+    document.getElementById("xInput").value = s.position.x.toFixed(2);
+    document.getElementById("yInput").value = s.position.y.toFixed(2);
+    document.getElementById("zInput").value = s.position.z.toFixed(2);
+  }));
+  points.push(s);
+  if(selectedPoint) selectedPoint.material = pointMat.clone();
+  selectedPoint = s;
+  selectedPoint.material = selectedMat;
+  focusCameraOn(selectedPoint);
+}
+
+document.getElementById("addPoint").addEventListener("click", ()=>{
+  let x = parseFloat(document.getElementById("xInput").value);
+  let y = parseFloat(document.getElementById("yInput").value);
+  let z = parseFloat(document.getElementById("zInput").value);
+
+  // symulacja pozycji "z" w regionie
+  const regionOffsetX = currentX*4096;
+  const regionOffsetZ = currentZ*4096;
+  addPoint(x+regionOffsetX,y,z+regionOffsetZ);
+});
+
+document.getElementById("editPoint").addEventListener("click", ()=>{
+  if(!selectedPoint) return alert("Nie zaznaczono punktu!");
+  let x = parseFloat(document.getElementById("xInput").value);
+  let y = parseFloat(document.getElementById("yInput").value);
+  let z = parseFloat(document.getElementById("zInput").value);
+  const regionOffsetX = currentX*4096;
+  const regionOffsetZ = currentZ*4096;
+  selectedPoint.position.set(x+regionOffsetX,y,z+regionOffsetZ);
+});
+
+document.getElementById("deletePoint").addEventListener("click", ()=>{
+  if(!selectedPoint) return alert("Nie zaznaczono punktu!");
+  points = points.filter(p=>p!==selectedPoint);
+  selectedPoint.dispose();
+  selectedPoint=null;
+});
+
+// === Render loop ===
+engine.runRenderLoop(()=>scene.render());
+window.addEventListener("resize",()=>engine.resize());
+drawRegionGrid();
 </script>
 
 </body>
