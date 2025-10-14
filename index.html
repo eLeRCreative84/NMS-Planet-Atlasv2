@@ -90,24 +90,27 @@ function focusCameraOn(point, distance = 30) {
 }
 
 function addPoint(x, y, z, meta = {}) {
+  // zachowaj prevSelected lokalnie (stan przed dodaniem)
+  const prevSelected = selectedPoint;
+
   // Tworzymy nowy punkt
   const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`, { diameter: 2 }, scene);
   sphere.position.set(x, y, z);
   sphere.material = pointMaterial.clone();
   sphere.metadata = meta;
 
-  // Połączenie z poprzednim punktem (jeśli był wybrany)
-  if (selectedPoint && selectedPoint !== sphere) {
-    const path = [selectedPoint.position, sphere.position];
+  // Jeśli istniał wcześniej zaznaczony punkt, utwórz linię z prevSelected -> new sphere
+  if (prevSelected && prevSelected !== sphere) {
+    const path = [prevSelected.position, sphere.position];
     const line = BABYLON.MeshBuilder.CreateLines("line", { points: path }, scene);
     line.color = new BABYLON.Color3(1, 1, 0);
-    line.metadata = { a: selectedPoint, b: sphere };
+    line.metadata = { a: prevSelected, b: sphere };
     lines.push(line);
   }
 
   points.push(sphere);
 
-  // Kliknięcie w punkt (zaznaczenie)
+  // Kliknięcie w punkt (ustawienie zaznaczenia)
   sphere.actionManager = new BABYLON.ActionManager(scene);
   sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
     BABYLON.ActionManager.OnPickTrigger,
@@ -125,20 +128,60 @@ function addPoint(x, y, z, meta = {}) {
     }
   ));
 
-  // Zmieniamy zaznaczenie na nowy punkt
+  // TERAZ ustawiamy zaznaczenie na nowy punkt (jedyny punkt, który zmienia globalny stan)
   if (selectedPoint) selectedPoint.material = pointMaterial.clone();
   selectedPoint = sphere;
   selectedPoint.material = selectedMaterial;
 
-  // Aktualizujemy HUD po dodaniu nowego punktu
+  // Aktualizujemy HUD dopiero po ustawieniu selectedPoint
   document.getElementById("xInput").value = x.toFixed(2);
   document.getElementById("yInput").value = y.toFixed(2);
   document.getElementById("zInput").value = z.toFixed(2);
   document.getElementById("coordInput").value = meta.galactic || "";
   document.getElementById("portalInput").value = meta.portal || "";
 
+  // opcjonalnie wyczyść pola wejściowe NMS, jeśli chcesz
+  // document.getElementById("coordInput").value = "";
+  // document.getElementById("portalInput").value = "";
+
+  // i wreszcie zoom
   focusCameraOn(selectedPoint);
 }
+
+// Zastępuje Twój event listener dla przycisku 'Dodaj' (usuń duplikujące aktualizacje po addPoint)
+document.getElementById('addPoint').addEventListener('click',()=>{
+  const coordVal = document.getElementById('coordInput').value.trim();
+  const portalVal = document.getElementById('portalInput').value.trim();
+
+  let x, y, z, gal, portal;
+
+  if (coordVal && coordVal.includes(':')) {
+    try {
+      const res = galacticToXYZ(coordVal);
+      x = res.x; y = res.y; z = res.z;
+      gal = coordVal;
+      portal = xyzToPortal(x,y,z);
+    } catch(e){ return alert(e.message); }
+
+  } else if (portalVal && portalVal.length === 12) {
+    try {
+      const res = portalToXYZ(portalVal);
+      x = res.x; y = res.y; z = res.z;
+      gal = xyzToGalactic(x,y,z);
+      portal = portalVal;
+    } catch(e){ return alert(e.message); }
+
+  } else {
+    x = parseFloat(document.getElementById('xInput').value);
+    y = parseFloat(document.getElementById('yInput').value);
+    z = parseFloat(document.getElementById('zInput').value);
+    gal = xyzToGalactic(x,y,z);
+    portal = xyzToPortal(x,y,z);
+  }
+
+  // Nie aktualizujemy pola HUD tutaj — addPoint zrobi to poprawnie.
+  addPoint(x,y,z,{galactic:gal,portal});
+});
 
 // === Konwersje ===
 function galacticToXYZ(g) {
@@ -227,3 +270,4 @@ window.addEventListener("resize",()=>engine.resize());
 
 </body>
 </html>
+
