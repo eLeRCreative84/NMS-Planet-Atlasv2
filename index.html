@@ -97,20 +97,33 @@ function addPoint(x, y, z, meta = {}) {
   sphere.material = pointMaterial.clone();
   sphere.metadata = meta;
 
-  sphere.actionManager = new BABYLON.ActionManager(scene);
-  sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
-    BABYLON.ActionManager.OnPickTrigger,
-    function() {
-      if (selectedPoint) selectedPoint.material = pointMaterial.clone();
-      selectedPoint = sphere;
-      selectedPoint.material = selectedMaterial;
-      document.getElementById("xInput").value = sphere.position.x;
-      document.getElementById("yInput").value = sphere.position.y;
-      document.getElementById("zInput").value = sphere.position.z;
-      if (sphere.metadata.galactic) document.getElementById("coordInput").value = sphere.metadata.galactic;
-      if (sphere.metadata.portal) document.getElementById("portalInput").value = sphere.metadata.portal;
-    }
-  ));
+  // Połączenie z poprzednim punktem
+  if (selectedPoint && selectedPoint !== sphere) {
+    const path = [selectedPoint.position, sphere.position];
+    const line = BABYLON.MeshBuilder.CreateLines("line", { points: path }, scene);
+    line.color = new BABYLON.Color3(1, 1, 0);
+    line.metadata = { a: selectedPoint, b: sphere };
+    lines.push(line);
+  }
+
+  points.push(sphere);
+
+  // Zmieniamy zaznaczenie na nowy punkt 
+  if (selectedPoint) selectedPoint.material = pointMaterial.clone();
+  selectedPoint = sphere;
+  selectedPoint.material = selectedMaterial;
+
+  // Aktualizujemy HUD
+  document.getElementById("xInput").value = x.toFixed(2);
+  document.getElementById("yInput").value = y.toFixed(2);
+  document.getElementById("zInput").value = z.toFixed(2);
+  if (meta.galactic) document.getElementById("coordInput").value = meta.galactic;
+  if (meta.portal) document.getElementById("portalInput").value = meta.portal;
+
+  // Kamera – zoom do nowego punktu 
+  focusCameraOn(selectedPoint, 30);
+}
+
 
   if (selectedPoint && selectedPoint !== sphere) {
     const path = [selectedPoint.position, sphere.position];
@@ -226,4 +239,5 @@ window.addEventListener("resize",()=>engine.resize());
 
 </body>
 </html>
+
 
