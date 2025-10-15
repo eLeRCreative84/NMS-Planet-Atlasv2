@@ -172,6 +172,7 @@ let loadedRegionKey = null; // który region jest załadowany do sceny (np. "3_5
 for (let iz = 0; iz < REGIONS_AXIS; iz++) {
   for (let ix = 0; ix < REGIONS_AXIS; ix++) {
     const key = regionIndexKey(ix, iz);
+    const num = regionNumber(ix, iz); // tylko do wyświetlenia
     regions[key] = { pointsData: [] };
   }
 }
@@ -183,8 +184,13 @@ const selectedMat = new BABYLON.StandardMaterial("selectedMat", scene);
 selectedMat.emissiveColor = new BABYLON.Color3(1,0,0);
 
 // ==== pomocnik: klucz regionu bazowany na indeksie regionu (0..15)
-function regionIndexKey(ix, iz){
-    return iz * REGIONS_AXIS + ix + 1; // numeracja od 1 do 256
+function regionIndexKey(ix, iz) {
+    return `${ix}_${iz}`; // klucz do obiektów i tablic w kodzie
+}
+
+  // numerowanie regionów 1,2,3...256
+function regionNumber(ix, iz) {
+    return iz * REGIONS_AXIS + ix + 1; 
 }
 
 // ==== funkcja określająca indeks regionu z globalnych współrzędnych x,z
@@ -286,15 +292,13 @@ function drawGalaxyGrid(){
 
 // helper: dodaje/usuwa klasę hasPoints dla kafelka regionu (jeśli jest aktualnie widoczny)
 function markRegionTileHasPoints(regionKey) {
-  // only applies when we're on level 1 (grupa widoczna)
-  if (level !== 1) return;
+  // regionKey = "ix_iz"
   const parts = regionKey.split("_");
-  const ix = parseInt(parts[0],10), iz = parseInt(parts[1],10);
-  const el = regionMapEl.querySelector(`.regionTile[data-ix='${ix}'][data-iz='${iz}']`);
-  if (el) {
-    const has = regions[regionKey] && regions[regionKey].pointsData && regions[regionKey].pointsData.length>0;
-    if (has) el.classList.add("hasPoints"); else el.classList.remove("hasPoints");
-  }
+  const ix = parseInt(parts[0]);
+  const iz = parseInt(parts[1]);
+
+  const tile = document.querySelector(`.regionTile[data-ix='${ix}'][data-iz='${iz}']`);
+  if (tile) tile.classList.add("hasPoints");
 }
 
 // rysowanie widoku GRUPY (4x4 regionów)
@@ -341,9 +345,12 @@ enterBtn.addEventListener("click", ()=>{
   const gz = parseInt(selectedTile.dataset.gz);
   currentGroupX = gx; currentGroupZ = gz;
   level = 1;
-  const groupIndex = gz * GROUPS_PER_AXIS + gx + 1;
-  groupNameLabel.textContent = `Grupa regionów ${groupIndex}`;
-  drawGroupGrid(currentGroupX, currentGroupZ);
+  
+  // wyświetlamy numer grupy w UI
+  const firstRegionX = currentGroupX * REGIONS_PER_GROUP;
+  const firstRegionZ = currentGroupZ * REGIONS_PER_GROUP;
+  const firstRegionNum = regionNumber(firstRegionX, firstRegionZ);
+  groupNameLabel.textContent = `Grupa regionów ${firstRegionNum} - ...`;
 
   // === Po wejściu do grupy, ustaw kamerę nad środkiem obszaru
   camera.setTarget(new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2));
@@ -601,6 +608,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
