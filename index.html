@@ -43,10 +43,10 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
   </div>
   <div>Galactic: <input type="text" id="coordInput" placeholder="AAAA:BBBB:CCCC:DDDD"></div>
   <div>
-    <button id="addPoint">Dodaj punkt w regionie</button>
-    <button id="zoomToPoint">Zoom</button>
-    <button id="editPoint">Edytuj</button>
-    <button id="deletePoint">Usuń</button>
+    <button id="addPointSolarSystem">Dodaj punkt w regionie</button>
+    <button id="zoomToPointSolarSystem">Zoom</button>
+    <button id="editPointSolarSystem">Edytuj</button>
+    <button id="deletePointSolarSystem">Usuń</button>
   </div>
 </div>
 
@@ -115,12 +115,9 @@ selectedMat.emissiveColor = new BABYLON.Color3(1,0,0);
 function regionIndexKey(ix, iz){ return `${ix}_${iz}`; }
 
 // ==== funkcja określająca indeks regionu z globalnych współrzędnych x,z
-// zakładamy, że użytkownik wprowadza X/Z w zakresie pasującym do naszej siatki.
-// jeżeli chcesz inny mapping, powiedz — dostosuję.
 function regionKeyFromPosition(x,z){
   const ix = Math.floor(x / REGION_WIDTH);
   const iz = Math.floor(z / REGION_DEPTH);
-  // limitujemy do 0..REGIONS_AXIS-1
   const clampedX = Math.max(0, Math.min(REGIONS_AXIS-1, ix));
   const clampedZ = Math.max(0, Math.min(REGIONS_AXIS-1, iz));
   return regionIndexKey(clampedX, clampedZ);
@@ -135,11 +132,9 @@ function focusCameraOn(point,distance=50){
   BABYLON.Animation.CreateAndStartAnimation("camTarget",camera,"target",60,60,camera.target.clone(),target,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
 }
 
-/* === addPoint: zostawiamy jak było, ALE nie tworzymy tu kafelka w mapie
+/* === addSolarSystemPoint: zostawiamy jak było, ALE nie tworzymy tu kafelka w mapie
    (mapa jest niezależna i ma zawsze aktywne pola). */
-function addPoint(x,y,z,gal){
-  // oblicz indeks regionu na podstawie pozycji
-  // (zakładamy że x,z są globalnymi współrzędnymi pasującymi do siatki 16x16)
+function addSolarSystemPoint(x,y,z,gal){
   const ix = Math.floor(x / REGION_WIDTH);
   const iz = Math.floor(z / REGION_DEPTH);
   const key = regionIndexKey(ix,iz);
@@ -147,11 +142,9 @@ function addPoint(x,y,z,gal){
   if(!regions[key]){
     const node = new BABYLON.TransformNode(key,scene);
     regions[key] = { node: node, points: [] };
-    // UWAGA: nie tworzymy tu kafelka w DOM — mapa jest niezależna
   }
   const region = regions[key];
 
-  // symulacja Y w regionie (ograniczamy)
   y = Math.min(Math.max(y,0), REGION_HEIGHT);
 
   const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`,{diameter:2},scene);
@@ -162,7 +155,6 @@ function addPoint(x,y,z,gal){
   region.points.push(sphere);
   points.push(sphere);
 
-  // kliknięcie
   sphere.actionManager = new BABYLON.ActionManager(scene);
   sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,()=>{
     if(selectedPoint) selectedPoint.material = pointMat.clone();
@@ -180,39 +172,32 @@ function addPoint(x,y,z,gal){
 
 /* ==============================
    --- TUTAJ DOPISUJEMY SIATKĘ ---
-   Dwa poziomy:
-     LEVEL = 0 -> widok GALAKTYKI: 4x4 kafelków, każdy kafelek = jedna grupa (4x4 regions)
-     LEVEL = 1 -> widok GRUPY: 4x4 kafelków, każdy kafelek = konkretny region (index 0..15 po osi)
    ============================== */
 
 const regionMapEl = document.getElementById("regionMap");
 const enterBtn = document.getElementById("enterGroup");
 const exitBtn = document.getElementById("exitGroup");
 
-// stan siatki
-let level = 0; // 0 = galaktyka (grupy), 1 = grupa (regiony)
+let level = 0; 
 let selectedTile = null;
-let currentGroupX = 0; // indeks grupy w skali 0..3
-let currentGroupZ = 0; // indeks grupy w skali 0..3
+let currentGroupX = 0;
+let currentGroupZ = 0;
 
 // helper: wyczysc selection
-function clearSelection(){
+function clearSelectionTile(){
   if(selectedTile) { selectedTile.classList.remove("selected"); selectedTile = null; }
 }
 
 // rysowanie widoku GALAKTYKI (4x4 grup)
 function drawGalaxyGrid(){
   regionMapEl.innerHTML = "";
-  clearSelection();
-  // 4x4 groups; group indices gx,gz in 0..3
+  clearSelectionTile();
   for(let gz=0; gz<4; gz++){
     for(let gx=0; gx<4; gx++){
       const tile = document.createElement("div");
       tile.className = "regionTile";
-      // zapisz pozycję grupy w data
       tile.dataset.gx = gx;
       tile.dataset.gz = gz;
-      // brak tekstu wewnątrz kafelka — tak chciałeś
       tile.addEventListener("click", ()=> {
         if(selectedTile) selectedTile.classList.remove("selected");
         selectedTile = tile;
@@ -223,27 +208,22 @@ function drawGalaxyGrid(){
   }
 }
 
-// rysowanie widoku GRUPY (4x4 regionów wewnątrz danej grupy)
+// rysowanie widoku GRUPY (4x4 regionów)
 function drawGroupGrid(groupX, groupZ){
   regionMapEl.innerHTML = "";
-  clearSelection();
-  // każdy group zawiera 4x4 regionów o indeksach:
-  // regionX = groupX*4 + rx  (rx 0..3)
-  // regionZ = groupZ*4 + rz  (rz 0..3)
+  clearSelectionTile();
   for(let rz=0; rz<4; rz++){
     for(let rx=0; rx<4; rx++){
       const tile = document.createElement("div");
       tile.className = "regionTile";
-      const regionX = groupX * REGIONS_PER_GROUP + rx; // 0..15
-      const regionZ = groupZ * REGIONS_PER_GROUP + rz; // 0..15
+      const regionX = groupX * REGIONS_PER_GROUP + rx;
+      const regionZ = groupZ * REGIONS_PER_GROUP + rz;
       tile.dataset.ix = regionX;
       tile.dataset.iz = regionZ;
-      // kliknięcie: zaznacz i przesuń kamerę na środek regionu
       tile.addEventListener("click", ()=>{
         if(selectedTile) selectedTile.classList.remove("selected");
         selectedTile = tile;
         tile.classList.add("selected");
-        // ustaw kamerę w centrum regionu
         const cx = regionX * REGION_WIDTH + REGION_WIDTH/2;
         const cz = regionZ * REGION_DEPTH + REGION_DEPTH/2;
         const cy = REGION_HEIGHT / 2;
@@ -255,20 +235,16 @@ function drawGroupGrid(groupX, groupZ){
   }
 }
 
-// obsługa ENTER (+) — wchodzimy z widoku GALAKTYKI do GRUPY
 enterBtn.addEventListener("click", ()=>{
   if(level !== 0) return;
   if(!selectedTile) return alert("Zaznacz grupę, w którą chcesz wejść.");
-  // odczytujemy indeksy grupy z data
   const gx = parseInt(selectedTile.dataset.gx);
   const gz = parseInt(selectedTile.dataset.gz);
   currentGroupX = gx; currentGroupZ = gz;
   level = 1;
-  // rysujemy regiony tej grupy
   drawGroupGrid(currentGroupX, currentGroupZ);
 });
 
-// obsługa EXIT (-) — wychodzimy z GRUPY do GALAKTYKI
 exitBtn.addEventListener("click", ()=>{
   if(level !== 1) return;
   level = 0;
@@ -276,7 +252,6 @@ exitBtn.addEventListener("click", ()=>{
   drawGalaxyGrid();
 });
 
-// na start rysujemy GALAKTYKĘ (4x4 grup)
 drawGalaxyGrid();
 
 /* ================================
@@ -288,24 +263,22 @@ const yInput=document.getElementById("yInput");
 const zInput=document.getElementById("zInput");
 const coordInput=document.getElementById("coordInput");
 
-document.getElementById("addPoint").addEventListener("click",()=>{
-  // Zakładamy, że wartości x,y,z podane to GLOBALNE współrzędne (użytkownik może założyć lokalność)
+document.getElementById("addPointSolarSystem").addEventListener("click",()=>{
   const x=parseFloat(xInput.value);
   const y=parseFloat(yInput.value);
   const z=parseFloat(zInput.value);
   const gal=coordInput.value.trim();
-  addPoint(x,y,z,gal);
+  addSolarSystemPoint(x,y,z,gal);
 });
 
-document.getElementById("zoomToPoint").addEventListener("click",()=>{ if(selectedPoint) focusCameraOn(selectedPoint); });
-document.getElementById("editPoint").addEventListener("click",()=>{
+document.getElementById("zoomToPointSolarSystem").addEventListener("click",()=>{ if(selectedPoint) focusCameraOn(selectedPoint); });
+document.getElementById("editPointSolarSystem").addEventListener("click",()=>{
   if(!selectedPoint) return alert("Nie zaznaczono punktu!");
   selectedPoint.position.set(parseFloat(xInput.value),parseFloat(yInput.value),parseFloat(zInput.value));
   selectedPoint.metadata.galactic = coordInput.value.trim();
 });
-document.getElementById("deletePoint").addEventListener("click",()=>{
+document.getElementById("deletePointSolarSystem").addEventListener("click",()=>{
   if(!selectedPoint) return alert("Nie zaznaczono punktu!");
-  // usuwamy z regionu (jeśli jest)
   const ix = Math.floor(selectedPoint.position.x / REGION_WIDTH);
   const iz = Math.floor(selectedPoint.position.z / REGION_DEPTH);
   const key = regionIndexKey(ix,iz);
@@ -322,4 +295,3 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
-
