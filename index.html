@@ -345,12 +345,48 @@ const zInput=document.getElementById("zInput");
 const coordInput=document.getElementById("coordInput");
 
 document.getElementById("addPointSolarSystem").addEventListener("click",()=>{
-  const x=parseFloat(xInput.value);
-  const y=parseFloat(yInput.value);
-  const z=parseFloat(zInput.value);
-  const gal=coordInput.value.trim();
-  addSolarSystemPoint(x,y,z,gal);
+  const gal = coordInput.value.trim();
+  let x = parseFloat(xInput.value);
+  let y = parseFloat(yInput.value);
+  let z = parseFloat(zInput.value);
+
+  // === PRZYPADEK 1: Koordynaty Galactic są wypełnione ===
+  if (gal && gal.includes(":")) {
+    // Przykładowy format: AAAA:BBBB:CCCC:DDDD
+    // Można tu rozszerzyć na dokładniejsze mapowanie regionów.
+    const parts = gal.split(":").map(p => parseInt(p,16) || 0);
+
+    // uproszczone odwzorowanie galaktyczne -> współrzędne regionu
+    const gx = parts[2] % REGIONS_AXIS;
+    const gz = parts[3] % REGIONS_AXIS;
+
+    x = gx * REGION_WIDTH + REGION_WIDTH / 2;
+    z = gz * REGION_DEPTH + REGION_DEPTH / 2;
+    y = Math.min(Math.max(y || 0, 0), REGION_HEIGHT);
+
+    addSolarSystemPoint(x, y, z, gal);
+    return;
+  }
+
+  // === PRZYPADEK 2: Użytkownik dodaje ręcznie (brak Galactic) ===
+  // Musi być wybrany region (czyli jesteśmy na poziomie grupy)
+  if (level !== 1 || !selectedTile || !selectedTile.dataset.ix) {
+    alert("Wybierz region z mapy, zanim dodasz punkt ręcznie.");
+    return;
+  }
+
+  // obliczamy pozycję względem wybranego regionu
+  const ix = parseInt(selectedTile.dataset.ix);
+  const iz = parseInt(selectedTile.dataset.iz);
+
+  // jeśli użytkownik nie podał współrzędnych X/Z, tworzymy w środku regionu
+  if (isNaN(x)) x = ix * REGION_WIDTH + REGION_WIDTH / 2;
+  if (isNaN(z)) z = iz * REGION_DEPTH + REGION_DEPTH / 2;
+  if (isNaN(y)) y = REGION_HEIGHT / 2;
+
+  addSolarSystemPoint(x, y, z, gal);
 });
+
 
 document.getElementById("zoomToPointSolarSystem").addEventListener("click",()=>{ if(selectedPoint) focusCameraOn(selectedPoint); });
 document.getElementById("editPointSolarSystem").addEventListener("click",()=>{
@@ -377,4 +413,5 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
