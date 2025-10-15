@@ -122,6 +122,11 @@ const canvas = document.getElementById("renderCanvas");
 const engine = new BABYLON.Engine(canvas,true);
 const scene = new BABYLON.Scene(engine);
 
+// === Regiony (logiczne, nie fizyczne) ===
+const REGION_WIDTH = 4096;
+const REGION_DEPTH = 4096;
+const REGION_HEIGHT = 256;
+  
 // === Kamera i światło ===
 /* Uwaga: scena 3D zawsze obejmuje tylko jeden obszar — pojedynczy region
    (rozmiar określony niżej). Kamera i skybox nie będą przesuwane. */
@@ -148,11 +153,6 @@ skybox.material = skyboxMaterial;
 // upewnij się, że skybox wygląda jak tło niezależne od położenia kamery
 // skybox.infiniteDistance = true;
 scene.clearColor = new BABYLON.Color4(0,0,0,1);
-
-// === Regiony (logiczne, nie fizyczne) ===
-const REGION_WIDTH = 4096;
-const REGION_DEPTH = 4096;
-const REGION_HEIGHT = 256;
 
 /* Uwaga: tu traktujemy model uproszczony:
    - globalnie mamy 16 x 16 regionów ułożonych w siatkę (index 0..15 po X i Z)
@@ -600,4 +600,5 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
