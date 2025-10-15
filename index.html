@@ -26,13 +26,15 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
   background:rgba(255,255,255,0.02);
   border:1px solid rgba(255,255,255,0.06);
   cursor:pointer; user-select:none;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; color:rgba(255,255,255,0.6);
 }
 .regionTile:hover { filter:brightness(1.2); }
 .regionTile.selected { outline:2px solid rgba(0,200,0,0.9); }
 #regionControls { position:absolute; top:260px; right:10px; display:flex; gap:6px; }
 #regionControls button { padding:6px 8px; }
 
-  .regionTile.hasPoints {
+.regionTile.hasPoints {
   outline: 2px solid rgba(255, 230, 0, 0.8);
   box-shadow: 0 0 6px rgba(255, 230, 0, 0.5);
 }
@@ -81,8 +83,6 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
   border-color: rgba(0,200,0,0.9);
   background: rgba(0,100,0,0.4);
 }
-
-  
 </style>
 </head>
 <body>
@@ -123,8 +123,15 @@ const engine = new BABYLON.Engine(canvas,true);
 const scene = new BABYLON.Scene(engine);
 
 // === Kamera i światło ===
-const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/4, Math.PI/4, 200, new BABYLON.Vector3(0,0,0), scene);
+/* Uwaga: scena 3D zawsze obejmuje tylko jeden obszar — pojedynczy region
+   (rozmiar określony niżej). Kamera i skybox nie będą przesuwane. */
+const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/4, Math.PI/4, 600, new BABYLON.Vector3(REGION_WIDTH/2 || 0, 128 || 0, REGION_DEPTH/2 || 0), scene);
 camera.attachControl(canvas,true);
+camera.minZ = 0.1; 
+camera.maxZ = 20000;
+camera.lowerRadiusLimit = 50;
+camera.upperRadiusLimit = 8000;
+
 const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0,1,0), scene);
 
 // === Skybox ===
@@ -137,44 +144,39 @@ skyboxMaterial.specularColor=new BABYLON.Color3(0,0,0);
 skyboxMaterial.reflectionTexture=new BABYLON.CubeTexture("https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1", scene);
 skyboxMaterial.reflectionTexture.coordinatesMode=BABYLON.Texture.SKYBOX_MODE;
 skybox.material = skyboxMaterial;
-  
-// spraw, żeby skybox zachowywał się jak obiekt na "nieskończoność"
-// (renderuje się tak, jakby zawsze otaczał kamerę)
-// skybox.infiniteDistance = true;
 
-// === Regiony (fizyczne w świecie) ===
+// upewnij się, że skybox wygląda jak tło niezależne od położenia kamery
+skybox.infiniteDistance = true;
+scene.clearColor = new BABYLON.Color4(0,0,0,1);
+
+// === Regiony (logiczne, nie fizyczne) ===
 const REGION_WIDTH = 4096;
 const REGION_DEPTH = 4096;
 const REGION_HEIGHT = 256;
 
 /* Uwaga: tu traktujemy model uproszczony:
    - globalnie mamy 16 x 16 regionów ułożonych w siatkę (index 0..15 po X i Z)
-   - te 16x16 regionów są pogrupowane w 16 grup 4x4 (czyli GRID_GROUPS=4 po każdej osi)
+   - te 16x16 regionów są pogrupowane w 16 grup 4x4 (czyli GROUPS_PER_AXIS = 4)
+   - ALE scena 3D obejmuje tylko **jeden** region w danym momencie (0..4096)
 */
 const GROUPS_PER_AXIS = 4;        // 4x4 grup = 16 grup (poziom GALAKTYKA)
 const REGIONS_PER_GROUP = 4;      // 4x4 regionów w grupie = 16 regionów (poziom GRUPA)
 const REGIONS_AXIS = GROUPS_PER_AXIS * REGIONS_PER_GROUP; // 16 regions per axis
 
-let points = [];
-let selectedPoint = null;
-let regions = {}; // { "ix_iz": { node, points } }
+let renderedPoints = []; // aktualnie wyrenderowane mesh'e w scenie (dla załadowanego regionu)
+let selectedPoint = null; // odnosi się do mesh'a w scenie (jeśli zaznaczony)
+let regions = {}; // { "ix_iz": { pointsData: [ {id,x,y,z,galactic} ] } }
+let uniqueIdCounter = 0;
+let loadedRegionKey = null; // który region jest załadowany do sceny (np. "3_5")
 
-// Tworzymy puste regiony z dummy anchorami, żeby kamera zawsze miała cel
+// ===== inicjalizacja struktur danych regionów (puste) =====
 for (let iz = 0; iz < REGIONS_AXIS; iz++) {
   for (let ix = 0; ix < REGIONS_AXIS; ix++) {
     const key = regionIndexKey(ix, iz);
-    const node = new BABYLON.TransformNode(`region_${key}`, scene);
-
-    // dummy mesh (niewidoczny, ale istnieje)
-    const dummy = BABYLON.MeshBuilder.CreateBox(`dummy_${key}`, { size: 1 }, scene);
-    dummy.isVisible = false;
-    dummy.parent = node;
-    dummy.position.set(ix * REGION_WIDTH + REGION_WIDTH/2, REGION_HEIGHT/2, iz * REGION_DEPTH + REGION_DEPTH/2);
-
-    regions[key] = { node: node, points: [], dummy: dummy };
+    regions[key] = { pointsData: [] };
   }
 }
-  
+
 // Materiały punktów
 const pointMat = new BABYLON.StandardMaterial("pointMat", scene);
 pointMat.emissiveColor = new BABYLON.Color3(0,1,0);
@@ -185,6 +187,7 @@ selectedMat.emissiveColor = new BABYLON.Color3(1,0,0);
 function regionIndexKey(ix, iz){ return `${ix}_${iz}`; }
 
 // ==== funkcja określająca indeks regionu z globalnych współrzędnych x,z
+// (zachowujemy, ale w nowym modelu X/Z punktów są w zakresie 0..REGION_WIDTH/DEPTH)
 function regionKeyFromPosition(x,z){
   const ix = Math.floor(x / REGION_WIDTH);
   const iz = Math.floor(z / REGION_DEPTH);
@@ -194,58 +197,49 @@ function regionKeyFromPosition(x,z){
 }
 
 // === Kamera na punkt ===
-function focusCameraOn(point,distance=50){
-  const target = point.position.clone();
-  const dir = camera.position.subtract(camera.target).normalize().scale(distance);
+function focusCameraOn(pointMesh,distance=200){
+  // Płynne przesunięcie kamery, target to pozycja punktu
+  if(!pointMesh) return;
+  const target = pointMesh.position.clone();
+  const dir = camera.position.subtract(camera.target || new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2)).normalize().scale(distance);
   const newPos = target.add(dir);
   BABYLON.Animation.CreateAndStartAnimation("camMove",camera,"position",60,60,camera.position.clone(),newPos,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-  BABYLON.Animation.CreateAndStartAnimation("camTarget",camera,"target",60,60,camera.target.clone(),target,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+  BABYLON.Animation.CreateAndStartAnimation("camTarget",camera,"target",60,60,camera.target ? camera.target.clone() : new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2),target,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
 }
 
-/* === addSolarSystemPoint: zostawiamy jak było, ALE nie tworzymy tu kafelka w mapie
-   (mapa jest niezależna i ma zawsze aktywne pola). */
-function addSolarSystemPoint(x,y,z,gal){
-  const ix = Math.floor(x / REGION_WIDTH);
-  const iz = Math.floor(z / REGION_DEPTH);
-  const key = regionIndexKey(ix,iz);
-
-  if(!regions[key]){
-    const node = new BABYLON.TransformNode(key,scene);
-    regions[key] = { node: node, points: [] };
+/* === addSolarSystemPoint: teraz dodaje dane do logicznego regionu (regions[key].pointsData)
+   i ewentualnie przeładowuje scenę jeśli to ten region jest aktualnie załadowany.
+*/
+function addSolarSystemPoint(x,y,z,gal, targetRegionKey=null){
+  // jeśli podano współrzędne globalne (w obrębie jednego regionu), możemy policzyć klucz:
+  // ALE często targetRegionKey zostanie przekazany (np. przy ręcznym dodawaniu)
+  let key;
+  if (targetRegionKey) {
+    key = targetRegionKey;
+  } else {
+    key = regionKeyFromPosition(x,z);
   }
-  const region = regions[key];
 
-  y = Math.min(Math.max(y,0), REGION_HEIGHT);
+  // upewnij się, że punkt mieści się w obrębie jednego regionu (0..REGION_WIDTH), przyjmujemy clamp
+  x = Math.min(Math.max(isNaN(x) ? REGION_WIDTH/2 : x, 0), REGION_WIDTH);
+  y = Math.min(Math.max(isNaN(y) ? REGION_HEIGHT/2 : y, 0), REGION_HEIGHT);
+  z = Math.min(Math.max(isNaN(z) ? REGION_DEPTH/2 : z, 0), REGION_DEPTH);
 
-  const sphere = BABYLON.MeshBuilder.CreateSphere(`p${points.length}`,{diameter:2},scene);
-  sphere.position.set(x,y,z);
-  sphere.material = pointMat.clone();
-  sphere.metadata = {galactic: gal};
-  sphere.parent = region.node;
-  region.points.push(sphere);
-  points.push(sphere);
+  if(!regions[key]) regions[key] = { pointsData: [] };
 
-  sphere.actionManager = new BABYLON.ActionManager(scene);
-  sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,()=>{
-    if(selectedPoint) selectedPoint.material = pointMat.clone();
-    selectedPoint = sphere; selectedPoint.material = selectedMat;
-    document.getElementById("xInput").value = sphere.position.x.toFixed(2);
-    document.getElementById("yInput").value = sphere.position.y.toFixed(2);
-    document.getElementById("zInput").value = sphere.position.z.toFixed(2);
-    document.getElementById("coordInput").value = gal || "";
-  }));
+  const id = `pt_${uniqueIdCounter++}`;
+  const pd = { id, x, y, z, galactic: gal || "" };
+  regions[key].pointsData.push(pd);
 
-  if(selectedPoint) selectedPoint.material = pointMat.clone();
-  selectedPoint = sphere; selectedPoint.material = selectedMat;
-  focusCameraOn(selectedPoint);
+  // oznacz kafelek w mapie (jeśli pokazujemy grupę)
+  markRegionTileHasPoints(key);
 
-// === oznacz region na mapie jako aktywny (ma punkty)
-if (level === 1) {
-  const tile = document.querySelector(`.regionTile[data-ix='${ix}'][data-iz='${iz}']`);
-  if (tile) tile.classList.add("hasPoints");
-}
- 
-  addToSolarList(sphere);
+  // jeśli aktualnie załadowany region to ten do którego dodano punkt, przeładuj widok
+  if (loadedRegionKey === key) {
+    loadRegionByKey(key, { selectId: id });
+  }
+
+  return id;
 }
 
 /* ==============================
@@ -278,6 +272,7 @@ function drawGalaxyGrid(){
       tile.className = "regionTile";
       tile.dataset.gx = gx;
       tile.dataset.gz = gz;
+      tile.textContent = `G${gz*4+gx+1}`;
       tile.addEventListener("click", ()=> {
         if(selectedTile) selectedTile.classList.remove("selected");
         selectedTile = tile;
@@ -285,6 +280,19 @@ function drawGalaxyGrid(){
       });
       regionMapEl.appendChild(tile);
     }
+  }
+}
+
+// helper: dodaje/usuwa klasę hasPoints dla kafelka regionu (jeśli jest aktualnie widoczny)
+function markRegionTileHasPoints(regionKey) {
+  // only applies when we're on level 1 (grupa widoczna)
+  if (level !== 1) return;
+  const parts = regionKey.split("_");
+  const ix = parseInt(parts[0],10), iz = parseInt(parts[1],10);
+  const el = regionMapEl.querySelector(`.regionTile[data-ix='${ix}'][data-iz='${iz}']`);
+  if (el) {
+    const has = regions[regionKey] && regions[regionKey].pointsData && regions[regionKey].pointsData.length>0;
+    if (has) el.classList.add("hasPoints"); else el.classList.remove("hasPoints");
   }
 }
 
@@ -300,29 +308,25 @@ function drawGroupGrid(groupX, groupZ){
       const regionZ = groupZ * REGIONS_PER_GROUP + rz;
       tile.dataset.ix = regionX;
       tile.dataset.iz = regionZ;
+      tile.textContent = `${regionX}_${regionZ}`;
+      // pokaż czy region ma punkty
+      const key = regionIndexKey(regionX, regionZ);
+      if (regions[key] && regions[key].pointsData && regions[key].pointsData.length>0) {
+        tile.classList.add("hasPoints");
+      }
       tile.addEventListener("click", ()=>{
         if(selectedTile) selectedTile.classList.remove("selected");
         selectedTile = tile;
         tile.classList.add("selected");
-        
-        const key = regionIndexKey(regionX, regionZ);
-        const region = regions[key];
-        if (region && region.dummy) {
-          camera.setTarget(region.dummy.position.clone());
-        } else {
-          const fallback = new BABYLON.Vector3(
-            regionX * REGION_WIDTH + REGION_WIDTH/2,
-            REGION_HEIGHT/2,
-            regionZ * REGION_DEPTH + REGION_DEPTH/2
-          );
-          camera.setTarget(fallback);
-}
-camera.alpha = Math.PI / 4;
-camera.beta = Math.PI / 4;
-camera.radius = 1200;
-camera.minZ = 0.1;
-camera.maxZ = 20000;
 
+        // === Ładujemy logiczny region do sceny (scena zawsze ten sam obszar)
+        const key = regionIndexKey(regionX, regionZ);
+        loadRegionByKey(key);
+        // ustaw kamere nad środkiem obszaru (nie przestawiamy sceny)
+        camera.setTarget(new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2));
+        camera.alpha = Math.PI / 4;
+        camera.beta = Math.PI / 4;
+        camera.radius = 600;
       });
       regionMapEl.appendChild(tile);
     }
@@ -340,19 +344,13 @@ enterBtn.addEventListener("click", ()=>{
   groupNameLabel.textContent = `Grupa regionów ${groupIndex}`;
   drawGroupGrid(currentGroupX, currentGroupZ);
 
-  // === Po wejściu do grupy, ustaw kamerę na pierwszy region (dummy)
-const firstRegionX = currentGroupX * REGIONS_PER_GROUP;
-const firstRegionZ = currentGroupZ * REGIONS_PER_GROUP;
-const firstKey = regionIndexKey(firstRegionX, firstRegionZ);
-const firstRegion = regions[firstKey];
-if (firstRegion && firstRegion.dummy) {
-  camera.setTarget(firstRegion.dummy.position.clone());
+  // === Po wejściu do grupy, ustaw kamerę nad środkiem obszaru
+  camera.setTarget(new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2));
   camera.alpha = Math.PI / 4;
   camera.beta = Math.PI / 4;
-  camera.radius = 1200;
+  camera.radius = 600;
   camera.minZ = 0.1;
   camera.maxZ = 20000;
-}
 });
 
 exitBtn.addEventListener("click", ()=>{
@@ -360,6 +358,10 @@ exitBtn.addEventListener("click", ()=>{
   level = 0;
   currentGroupX = 0; currentGroupZ = 0;
   drawGalaxyGrid();
+  groupNameLabel.textContent = "";
+  // czyścimy załadowany region ze sceny (jeśli chcesz, możesz zostawić)
+  clearRenderedPoints();
+  loadedRegionKey = null;
 });
 
 drawGalaxyGrid();
@@ -370,39 +372,44 @@ groupNameLabel.textContent = "";
    =============================== */
 const solarListEl = document.getElementById("solarList");
 
-// funkcja tworząca nowy wpis w liście
-function addToSolarList(sphere) {
-  const item = document.createElement("div");
-  item.className = "solarItem";
-  item.textContent = sphere.metadata.galactic || `Układ #${points.length}`;
-  item.dataset.id = sphere.name;
+// funkcja tworząca nowy wpis w liście (tylko dla aktualnie załadowanego regionu)
+function refreshSolarListForLoadedRegion() {
+  solarListEl.innerHTML = "";
+  if (!loadedRegionKey) return;
+  const region = regions[loadedRegionKey];
+  if (!region || !region.pointsData) return;
+  region.pointsData.forEach(pd => {
+    const item = document.createElement("div");
+    item.className = "solarItem";
+    item.textContent = pd.galactic || `Układ ${pd.id}`;
+    item.dataset.id = pd.id;
+    item.addEventListener("click", () => {
+      // usuwamy zaznaczenie poprzedniego
+      document.querySelectorAll(".solarItem").forEach(el => el.classList.remove("selected"));
+      item.classList.add("selected");
 
-  item.addEventListener("click", () => {
-    // usuwamy zaznaczenie poprzedniego
-    document.querySelectorAll(".solarItem").forEach(el => el.classList.remove("selected"));
-    item.classList.add("selected");
-
-    // podświetlenie w 3D
-    if (selectedPoint) selectedPoint.material = pointMat.clone();
-    selectedPoint = sphere;
-    selectedPoint.material = selectedMat;
-
-    // wypełnij inputy
-    xInput.value = sphere.position.x.toFixed(2);
-    yInput.value = sphere.position.y.toFixed(2);
-    zInput.value = sphere.position.z.toFixed(2);
-    coordInput.value = sphere.metadata.galactic || "";
-
-    focusCameraOn(sphere);
+      // znajdź mesh odpowiadający temu id w renderedPoints i zaznacz
+      const mesh = renderedPoints.find(m => m.metadata && m.metadata.id === pd.id);
+      if (mesh) {
+        if (selectedPoint) selectedPoint.material = pointMat.clone();
+        selectedPoint = mesh;
+        selectedPoint.material = selectedMat;
+        // wypełnij inputy
+        xInput.value = mesh.position.x.toFixed(2);
+        yInput.value = mesh.position.y.toFixed(2);
+        zInput.value = mesh.position.z.toFixed(2);
+        coordInput.value = mesh.metadata.galactic || "";
+        focusCameraOn(mesh);
+      }
+    });
+    solarListEl.appendChild(item);
   });
-
-  solarListEl.appendChild(item);
 }
 
-// aktualizacja listy po usunięciu punktu
-function removeFromSolarList(sphere) {
-  const el = solarListEl.querySelector(`[data-id="${sphere.name}"]`);
-  if (el) el.remove();
+// aktualizacja listy po usunięciu punktu (reload region)
+function removeFromSolarListById(id) {
+  if (!loadedRegionKey) return;
+  refreshSolarListForLoadedRegion();
 }
 
 /* ================================
@@ -414,6 +421,82 @@ const yInput=document.getElementById("yInput");
 const zInput=document.getElementById("zInput");
 const coordInput=document.getElementById("coordInput");
 
+// === Pomocnicze funkcje do renderowania/zarządzania mesh'ami w scenie ===
+function clearRenderedPoints(){
+  renderedPoints.forEach(m => {
+    try { m.dispose(); } catch(e){ /* ignore */ }
+  });
+  renderedPoints = [];
+  selectedPoint = null;
+}
+
+function createMeshForPointData(pd) {
+  const sphere = BABYLON.MeshBuilder.CreateSphere(`m_${pd.id}`, { diameter: 2 }, scene);
+  sphere.position.set(pd.x, pd.y, pd.z);
+  sphere.material = pointMat.clone();
+  sphere.metadata = { id: pd.id, galactic: pd.galactic };
+  sphere.actionManager = new BABYLON.ActionManager(scene);
+  sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,()=>{
+    if(selectedPoint) selectedPoint.material = pointMat.clone();
+    selectedPoint = sphere; selectedPoint.material = selectedMat;
+    document.getElementById("xInput").value = sphere.position.x.toFixed(2);
+    document.getElementById("yInput").value = sphere.position.y.toFixed(2);
+    document.getElementById("zInput").value = sphere.position.z.toFixed(2);
+    document.getElementById("coordInput").value = sphere.metadata.galactic || "";
+    // highlight corresponding item in list
+    document.querySelectorAll(".solarItem").forEach(el => el.classList.remove("selected"));
+    const li = solarListEl.querySelector(`[data-id="${pd.id}"]`);
+    if (li) li.classList.add("selected");
+  }));
+  return sphere;
+}
+
+// Ładuje region do sceny na podstawie klucza regionu (np. "3_5")
+// opcje: { selectId: 'pt_x' } => po załadowaniu zaznacz ten punkt
+function loadRegionByKey(regionKey, options = {}) {
+  // czyścimy bieżące mesh'e
+  clearRenderedPoints();
+  loadedRegionKey = regionKey;
+
+  const region = regions[regionKey];
+  if (!region || !region.pointsData) {
+    refreshSolarListForLoadedRegion();
+    return;
+  }
+
+  // tworzymy mesh dla każdego punktu w data
+  region.pointsData.forEach(pd => {
+    const mesh = createMeshForPointData(pd);
+    renderedPoints.push(mesh);
+  });
+
+  // odśwież listę w sidebar
+  refreshSolarListForLoadedRegion();
+
+  // opcjonalnie zaznacz nowo dodany
+  if (options.selectId) {
+    const mesh = renderedPoints.find(m => m.metadata && m.metadata.id === options.selectId);
+    if (mesh) {
+      if (selectedPoint) selectedPoint.material = pointMat.clone();
+      selectedPoint = mesh;
+      selectedPoint.material = selectedMat;
+      // uzupełnij inputy
+      xInput.value = mesh.position.x.toFixed(2);
+      yInput.value = mesh.position.y.toFixed(2);
+      zInput.value = mesh.position.z.toFixed(2);
+      coordInput.value = mesh.metadata.galactic || "";
+      // highlight item
+      const li = solarListEl.querySelector(`[data-id="${options.selectId}"]`);
+      if (li) {
+        document.querySelectorAll(".solarItem").forEach(el => el.classList.remove("selected"));
+        li.classList.add("selected");
+      }
+      focusCameraOn(mesh, 200);
+    }
+  }
+}
+
+// === Obsługa przycisku Dodaj punkt ===
 document.getElementById("addPointSolarSystem").addEventListener("click",()=>{
   const gal = coordInput.value.trim();
   let x = parseFloat(xInput.value);
@@ -423,18 +506,25 @@ document.getElementById("addPointSolarSystem").addEventListener("click",()=>{
   // === PRZYPADEK 1: Koordynaty Galactic są wypełnione ===
   if (gal && gal.includes(":")) {
     // Przykładowy format: AAAA:BBBB:CCCC:DDDD
-    // Można tu rozszerzyć na dokładniejsze mapowanie regionów.
+    // Mapa galactic -> wybór regionu (uproszczona)
     const parts = gal.split(":").map(p => parseInt(p,16) || 0);
-
-    // uproszczone odwzorowanie galaktyczne -> współrzędne regionu
     const gx = parts[2] % REGIONS_AXIS;
     const gz = parts[3] % REGIONS_AXIS;
+    const regionKey = regionIndexKey(gx, gz);
 
-    x = gx * REGION_WIDTH + REGION_WIDTH / 2;
-    z = gz * REGION_DEPTH + REGION_DEPTH / 2;
-    y = Math.min(Math.max(y || 0, 0), REGION_HEIGHT);
+    // jeśli użytkownik nie podał X/Z, tworzymy w środku regionu
+    if (isNaN(x)) x = REGION_WIDTH/2;
+    if (isNaN(z)) z = REGION_DEPTH/2;
+    if (isNaN(y)) y = REGION_HEIGHT/2;
 
-    addSolarSystemPoint(x, y, z, gal);
+    const newId = addSolarSystemPoint(x,y,z,gal, regionKey);
+    // jeśli mamy teraz załadowany ten region -> reload i select
+    if (loadedRegionKey === regionKey) {
+      loadRegionByKey(regionKey, { selectId: newId });
+    } else {
+      // zaznacz kafelek hasPoints (jeśli jesteśmy w widoku grupy)
+      markRegionTileHasPoints(regionKey);
+    }
     return;
   }
 
@@ -445,36 +535,63 @@ document.getElementById("addPointSolarSystem").addEventListener("click",()=>{
     return;
   }
 
-  // obliczamy pozycję względem wybranego regionu
+  // obliczamy klucz regionu względem wybranego kafelka
   const ix = parseInt(selectedTile.dataset.ix);
   const iz = parseInt(selectedTile.dataset.iz);
+  const regionKey = regionIndexKey(ix, iz);
 
-  // jeśli użytkownik nie podał współrzędnych X/Z, tworzymy w środku regionu
-  if (isNaN(x)) x = ix * REGION_WIDTH + REGION_WIDTH / 2;
-  if (isNaN(z)) z = iz * REGION_DEPTH + REGION_DEPTH / 2;
-  if (isNaN(y)) y = REGION_HEIGHT / 2;
+  // jeśli użytkownik nie podał współrzędnych X/Z, tworzymy w środku regionu (0..REGION_WIDTH)
+  if (isNaN(x)) x = REGION_WIDTH/2;
+  if (isNaN(z)) z = REGION_DEPTH/2;
+  if (isNaN(y)) y = REGION_HEIGHT/2;
 
-  addSolarSystemPoint(x, y, z, gal);
+  const newId = addSolarSystemPoint(x, y, z, "", regionKey);
+  // przeładuj bieżący region i zaznacz nowy punkt
+  if (loadedRegionKey === regionKey) {
+    loadRegionByKey(regionKey, { selectId: newId });
+  } else {
+    // jeśli dodano punkt do regionu, który nie jest załadowany - oznacz kafelek
+    markRegionTileHasPoints(regionKey);
+  }
 });
-
 
 document.getElementById("zoomToPointSolarSystem").addEventListener("click",()=>{ if(selectedPoint) focusCameraOn(selectedPoint); });
+
 document.getElementById("editPointSolarSystem").addEventListener("click",()=>{
   if(!selectedPoint) return alert("Nie zaznaczono punktu!");
-  selectedPoint.position.set(parseFloat(xInput.value),parseFloat(yInput.value),parseFloat(zInput.value));
-  selectedPoint.metadata.galactic = coordInput.value.trim();
+  // znajdź entry w danych regionu i zaktualizuj
+  const id = selectedPoint.metadata && selectedPoint.metadata.id;
+  if (!id || !loadedRegionKey) return;
+  const region = regions[loadedRegionKey];
+  const entry = region.pointsData.find(p => p.id === id);
+  if (!entry) return;
+  entry.x = parseFloat(xInput.value);
+  entry.y = parseFloat(yInput.value);
+  entry.z = parseFloat(zInput.value);
+  entry.galactic = coordInput.value.trim();
+
+  // zaktualizuj mesh
+  selectedPoint.position.set(entry.x, entry.y, entry.z);
+  selectedPoint.metadata.galactic = entry.galactic;
+
+  // odśwież listę
+  refreshSolarListForLoadedRegion();
 });
+
 document.getElementById("deletePointSolarSystem").addEventListener("click",()=>{
   if(!selectedPoint) return alert("Nie zaznaczono punktu!");
-  const ix = Math.floor(selectedPoint.position.x / REGION_WIDTH);
-  const iz = Math.floor(selectedPoint.position.z / REGION_DEPTH);
-  const key = regionIndexKey(ix,iz);
-  const region = regions[key];
-  if(region) region.points = region.points.filter(p=>p!==selectedPoint);
-  points = points.filter(p=>p!==selectedPoint);
-  selectedPoint.dispose();
-  removeFromSolarList(selectedPoint);
-  selectedPoint=null;
+  const id = selectedPoint.metadata && selectedPoint.metadata.id;
+  if (!id || !loadedRegionKey) return;
+
+  // usuń z danych regionu
+  const region = regions[loadedRegionKey];
+  region.pointsData = region.pointsData.filter(p => p.id !== id);
+
+  // usuń mesh i odśwież scenę/listę
+  loadRegionByKey(loadedRegionKey);
+
+  // odznacz kafelek jeśli region jest teraz pusty
+  markRegionTileHasPoints(loadedRegionKey);
 });
 
 // === Render ===
@@ -483,9 +600,3 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
-
-
-
-
-
-
