@@ -140,7 +140,7 @@ skybox.material = skyboxMaterial;
   
 // spraw, żeby skybox zachowywał się jak obiekt na "nieskończoność"
 // (renderuje się tak, jakby zawsze otaczał kamerę)
-skybox.infiniteDistance = true;
+// skybox.infiniteDistance = true;
 
 // === Regiony (fizyczne w świecie) ===
 const REGION_WIDTH = 4096;
@@ -339,6 +339,20 @@ enterBtn.addEventListener("click", ()=>{
   const groupIndex = gz * GROUPS_PER_AXIS + gx + 1;
   groupNameLabel.textContent = `Grupa regionów ${groupIndex}`;
   drawGroupGrid(currentGroupX, currentGroupZ);
+
+  // === Po wejściu do grupy, ustaw kamerę na pierwszy region (dummy)
+const firstRegionX = currentGroupX * REGIONS_PER_GROUP;
+const firstRegionZ = currentGroupZ * REGIONS_PER_GROUP;
+const firstKey = regionIndexKey(firstRegionX, firstRegionZ);
+const firstRegion = regions[firstKey];
+if (firstRegion && firstRegion.dummy) {
+  camera.setTarget(firstRegion.dummy.position.clone());
+  camera.alpha = Math.PI / 4;
+  camera.beta = Math.PI / 4;
+  camera.radius = 1200;
+  camera.minZ = 0.1;
+  camera.maxZ = 20000;
+}
 });
 
 exitBtn.addEventListener("click", ()=>{
@@ -469,6 +483,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
