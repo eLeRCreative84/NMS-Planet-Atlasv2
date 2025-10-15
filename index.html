@@ -31,6 +31,43 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
 .regionTile.selected { outline:2px solid rgba(0,200,0,0.9); }
 #regionControls { position:absolute; top:260px; right:10px; display:flex; gap:6px; }
 #regionControls button { padding:6px 8px; }
+
+/* === LISTA UKŁADÓW (SIDEBAR) === */
+#solarList {
+  position: absolute;
+  top: 300px;          /* poniżej regionControls (260px + trochę marginesu) */
+  right: 10px;
+  width: 240px;        /* taka sama szerokość jak regionMap */
+  max-height: calc(100vh - 320px); /* nie wychodzi poza ekran */
+  overflow-y: auto;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 6px;
+  box-sizing: border-box;
+  color: white;
+  font-size: 13px;
+  backdrop-filter: blur(4px);
+}
+
+.solarItem {
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.solarItem:hover {
+  background: rgba(0,0,0,0.5);
+}
+.solarItem.selected {
+  border-color: rgba(0,200,0,0.9);
+  background: rgba(0,100,0,0.4);
+}
+
+  
 </style>
 </head>
 <body>
@@ -55,6 +92,9 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
   <button id="enterGroup">+</button>
   <button id="exitGroup">-</button>
 </div>
+
+  <!-- Sidebar lista układów -->
+<div id="solarList"></div>
 
 <script>
 /* ===============================
@@ -168,6 +208,7 @@ function addSolarSystemPoint(x,y,z,gal){
   if(selectedPoint) selectedPoint.material = pointMat.clone();
   selectedPoint = sphere; selectedPoint.material = selectedMat;
   focusCameraOn(selectedPoint);
+  addToSolarList(sphere);
 }
 
 /* ==============================
@@ -254,6 +295,46 @@ exitBtn.addEventListener("click", ()=>{
 
 drawGalaxyGrid();
 
+/* ===============================
+   SIDEBAR – lista układów
+   =============================== */
+const solarListEl = document.getElementById("solarList");
+
+// funkcja tworząca nowy wpis w liście
+function addToSolarList(sphere) {
+  const item = document.createElement("div");
+  item.className = "solarItem";
+  item.textContent = sphere.metadata.galactic || `Układ #${points.length}`;
+  item.dataset.id = sphere.name;
+
+  item.addEventListener("click", () => {
+    // usuwamy zaznaczenie poprzedniego
+    document.querySelectorAll(".solarItem").forEach(el => el.classList.remove("selected"));
+    item.classList.add("selected");
+
+    // podświetlenie w 3D
+    if (selectedPoint) selectedPoint.material = pointMat.clone();
+    selectedPoint = sphere;
+    selectedPoint.material = selectedMat;
+
+    // wypełnij inputy
+    xInput.value = sphere.position.x.toFixed(2);
+    yInput.value = sphere.position.y.toFixed(2);
+    zInput.value = sphere.position.z.toFixed(2);
+    coordInput.value = sphere.metadata.galactic || "";
+
+    focusCameraOn(sphere);
+  });
+
+  solarListEl.appendChild(item);
+}
+
+// aktualizacja listy po usunięciu punktu
+function removeFromSolarList(sphere) {
+  const el = solarListEl.querySelector(`[data-id="${sphere.name}"]`);
+  if (el) el.remove();
+}
+
 /* ================================
    Reszta Twojego HUD (bez zmian)
    ================================ */
@@ -286,6 +367,7 @@ document.getElementById("deletePointSolarSystem").addEventListener("click",()=>{
   if(region) region.points = region.points.filter(p=>p!==selectedPoint);
   points = points.filter(p=>p!==selectedPoint);
   selectedPoint.dispose();
+  removeFromSolarList(selectedPoint);
   selectedPoint=null;
 });
 
@@ -295,3 +377,4 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
