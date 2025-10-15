@@ -32,6 +32,21 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
 #regionControls { position:absolute; top:260px; right:10px; display:flex; gap:6px; }
 #regionControls button { padding:6px 8px; }
 
+  .regionTile.hasPoints {
+  outline: 2px solid rgba(255, 230, 0, 0.8);
+  box-shadow: 0 0 6px rgba(255, 230, 0, 0.5);
+}
+
+#groupNameLabel {
+  position: absolute;
+  top: 290px;
+  right: 70px; /* po lewej od przycisków */
+  color: #fff;
+  font-size: 14px;
+  opacity: 0.8;
+  font-weight: 500;
+}
+  
 /* === LISTA UKŁADÓW (SIDEBAR) === */
 #solarList {
   position: absolute;
@@ -92,7 +107,8 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
   <button id="enterGroup">+</button>
   <button id="exitGroup">-</button>
 </div>
-
+<div id="groupNameLabel"></div>
+  
   <!-- Sidebar lista układów -->
 <div id="solarList"></div>
 
@@ -109,12 +125,6 @@ const scene = new BABYLON.Scene(engine);
 // === Kamera i światło ===
 const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/4, Math.PI/4, 200, new BABYLON.Vector3(0,0,0), scene);
 camera.attachControl(canvas,true);
-
-camera.minZ = 0.1; 
-camera.maxZ = 20000; // skybox 10k więc 20k wystarczy
-camera.lowerRadiusLimit = 50;
-camera.upperRadiusLimit = 8000;
-  
 const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0,1,0), scene);
 
 // === Skybox ===
@@ -208,6 +218,13 @@ function addSolarSystemPoint(x,y,z,gal){
   if(selectedPoint) selectedPoint.material = pointMat.clone();
   selectedPoint = sphere; selectedPoint.material = selectedMat;
   focusCameraOn(selectedPoint);
+
+// === oznacz region na mapie jako aktywny (ma punkty)
+if (level === 1) {
+  const tile = document.querySelector(`.regionTile[data-ix='${ix}'][data-iz='${iz}']`);
+  if (tile) tile.classList.add("hasPoints");
+}
+ 
   addToSolarList(sphere);
 }
 
@@ -218,6 +235,8 @@ function addSolarSystemPoint(x,y,z,gal){
 const regionMapEl = document.getElementById("regionMap");
 const enterBtn = document.getElementById("enterGroup");
 const exitBtn = document.getElementById("exitGroup");
+const groupNameLabel = document.getElementById("groupNameLabel");
+
 
 let level = 0; 
 let selectedTile = null;
@@ -268,8 +287,13 @@ function drawGroupGrid(groupX, groupZ){
         const cx = regionX * REGION_WIDTH + REGION_WIDTH/2;
         const cz = regionZ * REGION_DEPTH + REGION_DEPTH/2;
         const cy = REGION_HEIGHT / 2;
-        camera.setTarget(new BABYLON.Vector3(cx, cy, cz));
-        camera.alpha = Math.PI/4; camera.beta = Math.PI/4; camera.radius = 600;
+        const target = new BABYLON.Vector3(cx, cy, cz);
+          camera.setTarget(target);
+          camera.alpha = Math.PI / 4;
+          camera.beta = Math.PI / 4;
+          camera.radius = 1200; // większy dystans, żeby zmieścić się w skyboxie
+          camera.minZ = 0.1;
+          camera.maxZ = 20000;  // pozwala na duży zasięg
       });
       regionMapEl.appendChild(tile);
     }
@@ -283,6 +307,8 @@ enterBtn.addEventListener("click", ()=>{
   const gz = parseInt(selectedTile.dataset.gz);
   currentGroupX = gx; currentGroupZ = gz;
   level = 1;
+  const groupIndex = gz * GROUPS_PER_AXIS + gx + 1;
+  groupNameLabel.textContent = `Grupa regionów ${groupIndex}`;
   drawGroupGrid(currentGroupX, currentGroupZ);
 });
 
@@ -294,6 +320,7 @@ exitBtn.addEventListener("click", ()=>{
 });
 
 drawGalaxyGrid();
+groupNameLabel.textContent = "";
 
 /* ===============================
    SIDEBAR – lista układów
@@ -413,5 +440,6 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
