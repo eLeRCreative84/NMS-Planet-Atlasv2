@@ -137,6 +137,10 @@ skyboxMaterial.specularColor=new BABYLON.Color3(0,0,0);
 skyboxMaterial.reflectionTexture=new BABYLON.CubeTexture("https://raw.githubusercontent.com/eLeRCreative84/NMS-Planet-Atlasv2/main/textures/skybox/sky1", scene);
 skyboxMaterial.reflectionTexture.coordinatesMode=BABYLON.Texture.SKYBOX_MODE;
 skybox.material = skyboxMaterial;
+  
+// spraw, żeby skybox zachowywał się jak obiekt na "nieskończoność"
+// (renderuje się tak, jakby zawsze otaczał kamerę)
+skybox.infiniteDistance = true;
 
 // === Regiony (fizyczne w świecie) ===
 const REGION_WIDTH = 4096;
@@ -465,6 +469,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
