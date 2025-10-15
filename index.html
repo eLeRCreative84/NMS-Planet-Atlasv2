@@ -103,10 +103,16 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
 </div>
 
 <div id="regionMap"></div>
-  <div id="groupNameLabel"></div>
-<div id="regionControls">
-    <button id="enterGroup">+</button>
-  <button id="exitGroup">-</button>
+<div id="regionControlsWrapper">
+  <table>
+    <tr>
+      <td><div id="groupNameLabel"></div></td>
+      <td>
+        <button id="enterGroup">+</button>
+        <button id="exitGroup">-</button>
+      </td>
+    </tr>
+  </table>
 </div>
  
   <!-- Sidebar lista układów -->
@@ -602,6 +608,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
