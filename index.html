@@ -169,6 +169,7 @@ const REGIONS_PER_GROUP = 4;      // 4x4 regionów w grupie = 16 regionów (pozi
 const REGIONS_AXIS = GROUPS_PER_AXIS * REGIONS_PER_GROUP; // 16 regions per axis
 
 let renderedPoints = []; // aktualnie wyrenderowane mesh'e w scenie (dla załadowanego regionu)
+let renderedEdges = [];
 let selectedPoint = null; // odnosi się do mesh'a w scenie (jeśli zaznaczony)
 let regions = {}; // { "ix_iz": { pointsData: [ {id,x,y,z,galactic} ] } }
 let uniqueIdCounter = 0;
@@ -178,9 +179,10 @@ let loadedRegionKey = null; // który region jest załadowany do sceny (np. "3_5
 for (let iz = 0; iz < REGIONS_AXIS; iz++) {
   for (let ix = 0; ix < REGIONS_AXIS; ix++) {
     const key = regionIndexKey(ix, iz);
-    regions[key] = { pointsData: [], edges: [] };
+    regions[key] = { pointsData: [], edges: [] }; 
   }
 }
+
 
 // Materiały punktów
 const pointMat = new BABYLON.StandardMaterial("pointMat", scene);
@@ -204,110 +206,74 @@ function regionKeyFromPosition(x,z){
 }
 
 // === Kamera na punkt ===
-function focusCameraOn(pointMesh, baseDistance=200){
+function focusCameraOn(pointMesh,distance=200){
+  // Płynne przesunięcie kamery, target to pozycja punktu
   if(!pointMesh) return;
-
-  const targetPos = pointMesh.position.clone();
-
-  // weźmy aktualną pozycję kamery i target
-  const startPos = camera.position.clone();
-  const startTarget = camera.target ? camera.target.clone() : new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2);
-
-  // kierunek wektorowy od starego targetu do nowego
-  const dir = targetPos.subtract(startTarget).normalize().scale(baseDistance);
-  const endPos = targetPos.add(dir);
-
-  // ustawienia animacji
-  const frameRate = 60;
-  const totalFrames = 60;
-
-  // helper do logarytmicznej interpolacji
-  const logInterp = (t) => Math.log10(9*t+1); // t in [0,1], wynik w [0,1]
-
-  // animacja pozycji
-  const animPos = new BABYLON.Animation("camMove", "position", frameRate, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-  const posKeys = [];
-  for(let f=0; f<=totalFrames; f++){
-    const t = f/totalFrames;
-    posKeys.push({ frame: f, value: BABYLON.Vector3.Lerp(startPos, endPos, logInterp(t)) });
-  }
-  animPos.setKeys(posKeys);
-
-  // animacja targetu
-  const animTarget = new BABYLON.Animation("camTarget", "target", frameRate, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-  const targetKeys = [];
-  for(let f=0; f<=totalFrames; f++){
-    const t = f/totalFrames;
-    targetKeys.push({ frame: f, value: BABYLON.Vector3.Lerp(startTarget, targetPos, logInterp(t)) });
-  }
-  animTarget.setKeys(targetKeys);
-
-  camera.animations = [];
-  camera.animations.push(animPos);
-  camera.animations.push(animTarget);
-
-  scene.beginAnimation(camera, 0, totalFrames, false);
+  const target = pointMesh.position.clone();
+  const dir = camera.position.subtract(camera.target || new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2)).normalize().scale(distance);
+  const newPos = target.add(dir);
+  BABYLON.Animation.CreateAndStartAnimation("camMove",camera,"position",60,60,camera.position.clone(),newPos,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+  BABYLON.Animation.CreateAndStartAnimation("camTarget",camera,"target",60,60,camera.target ? camera.target.clone() : new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2),target,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
 }
 
- // Tworzenie węzłów między dwoma punktami
 function createEdgeBetweenPoints(pd1, pd2) {
-  // pd1 i pd2 to obiekty z x, y, z oraz id
+  // pd1 i pd2 to obiekty z x,y,z
   const points = [
     new BABYLON.Vector3(pd1.x, pd1.y, pd1.z),
     new BABYLON.Vector3(pd2.x, pd2.y, pd2.z)
   ];
-
-  const line = BABYLON.MeshBuilder.CreateLines(`edge_${pd1.id}_${pd2.id}`, {
-    points,
-    updatable: true
-  }, scene);
-
+  const line = BABYLON.MeshBuilder.CreateLines(`edge_${pd1.id}_${pd2.id}`, { points, updatable: true }, scene);
   line.color = new BABYLON.Color3(1, 1, 0); // żółty
   line.isPickable = false; // żeby nie przeszkadzało przy kliku
 
-  // zwracamy mesh, żeby można było przypisać go do regionu
-  return line;
+  renderedEdges.push(line); // dodaj do tablicy
+  return line;              // zwróć dla logiki w addSolarSystemPoint
 }
-  
+
+
 /* === addSolarSystemPoint: teraz dodaje dane do logicznego regionu (regions[key].pointsData)
    i ewentualnie przeładowuje scenę jeśli to ten region jest aktualnie załadowany.
 */
-function addSolarSystemPoint(x,y,z,gal, targetRegionKey=null){
+function addSolarSystemPoint(x, y, z, gal, targetRegionKey = null) {
   // jeśli podano współrzędne globalne (w obrębie jednego regionu), możemy policzyć klucz:
   // ALE często targetRegionKey zostanie przekazany (np. przy ręcznym dodawaniu)
   let key;
   if (targetRegionKey) {
     key = targetRegionKey;
   } else {
-    key = regionKeyFromPosition(x,z);
+    key = regionKeyFromPosition(x, z);
   }
 
   // upewnij się, że punkt mieści się w obrębie jednego regionu (0..REGION_WIDTH), przyjmujemy clamp
-  x = Math.min(Math.max(isNaN(x) ? REGION_WIDTH/2 : x, 0), REGION_WIDTH);
-  y = Math.min(Math.max(isNaN(y) ? REGION_HEIGHT/2 : y, 0), REGION_HEIGHT);
-  z = Math.min(Math.max(isNaN(z) ? REGION_DEPTH/2 : z, 0), REGION_DEPTH);
+  x = Math.min(Math.max(isNaN(x) ? REGION_WIDTH / 2 : x, 0), REGION_WIDTH);
+  y = Math.min(Math.max(isNaN(y) ? REGION_HEIGHT / 2 : y, 0), REGION_HEIGHT);
+  z = Math.min(Math.max(isNaN(z) ? REGION_DEPTH / 2 : z, 0), REGION_DEPTH);
 
-  if(!regions[key]) regions[key] = { pointsData: [] };
+  // inicjalizacja regionu jeśli nie istnieje
+  if (!regions[key]) regions[key] = { pointsData: [], edges: [] };
 
   const id = `pt_${uniqueIdCounter++}`;
   const pd = { id, x, y, z, galactic: gal || "" };
   regions[key].pointsData.push(pd);
-  
-// rysujemy węzeł od zaznaczonego punktu
-if (selectedPoint) {
-  const prevPd = { 
-    x: selectedPoint.position.x, 
-    y: selectedPoint.position.y, 
-    z: selectedPoint.position.z, 
-    id: selectedPoint.metadata.id 
-  };
-  const newPd = pd; // nowo dodany punkt
-  const edgeMesh = createEdgeBetweenPoints(prevPd, newPd);
 
-  // dodajemy do regionu, w którym znajduje się nowy punkt
-  regions[key].edges.push({ fromId: prevPd.id, toId: newPd.id, mesh: edgeMesh });
-}
-  
+  // rysujemy węzeł od zaznaczonego punktu, tylko jeśli istnieje zaznaczony w tym regionie
+  if (selectedPoint && selectedPoint.metadata && selectedPoint.metadata.regionKey === key) {
+    const prevPd = {
+      x: selectedPoint.position.x,
+      y: selectedPoint.position.y,
+      z: selectedPoint.position.z,
+      id: selectedPoint.metadata.id
+    };
+    const edgeMesh = createEdgeBetweenPoints(prevPd, pd);
+   
+   regions[key].edges.push({ fromId: prevPd.id, toId: pd.id });
+ 
+    renderedEdges.push(edgeMesh); // dodajemy do globalnej tablicy
+    pd.connectedToPrev = true;    // flaga, że jest połączony z poprzednim
+  } else {
+    pd.connectedToPrev = false;
+  }
+
   // oznacz kafelek w mapie (jeśli pokazujemy grupę)
   markRegionTileHasPoints(key);
 
@@ -318,6 +284,9 @@ if (selectedPoint) {
 
   return id;
 }
+
+
+
 
 /* ==============================
    --- TUTAJ DOPISUJEMY SIATKĘ ---
@@ -340,6 +309,7 @@ function updateControlsState() {
   }
 }
  
+
 let level = 0; 
 let selectedTile = null;
 let currentGroupX = 0;
@@ -518,23 +488,19 @@ const zInput=document.getElementById("zInput");
 const coordInput=document.getElementById("coordInput");
 
 // === Pomocnicze funkcje do renderowania/zarządzania mesh'ami w scenie ===
-function clearRenderedPoints() {
-  // usuń wszystkie punkty z sceny
+function clearRenderedPoints(){
   renderedPoints.forEach(m => {
     try { m.dispose(); } catch(e){ /* ignore */ }
   });
   renderedPoints = [];
   selectedPoint = null;
-
-  // usuń wszystkie linie powiązane z aktualnie załadowanym regionem
-  if (loadedRegionKey && regions[loadedRegionKey] && regions[loadedRegionKey].edges) {
-    regions[loadedRegionKey].edges.forEach(edgeObj => {
-      try { edgeObj.mesh.dispose(); } catch(e) { }
-    });
-    regions[loadedRegionKey].edges = [];
-  }
+  
+  // czyszczenie węzłów
+  renderedEdges.forEach(e => {
+    try { e.dispose(); } catch(e){ }
+  });
+  renderedEdges = [];
 }
-
 
 function createMeshForPointData(pd) {
   const sphere = BABYLON.MeshBuilder.CreateSphere(`m_${pd.id}`, { diameter: 2 }, scene);
@@ -574,15 +540,21 @@ function loadRegionByKey(regionKey, options = {}) {
   region.pointsData.forEach(pd => {
     const mesh = createMeshForPointData(pd);
     renderedPoints.push(mesh);
+    mesh.metadata.regionKey = regionKey; // dodajemy info, z którego regionu mesh pochodzi
   });
 
-// renderujemy istniejące węzły w regionie
-if (region.edges) {
+  // renderujemy istniejące węzły w regionie
+  if (region.edges && region.edges.length > 0) {
   region.edges.forEach(edgeObj => {
-    scene.addMesh(edgeObj.mesh);
+    const fromPd = region.pointsData.find(p => p.id === edgeObj.fromId);
+    const toPd = region.pointsData.find(p => p.id === edgeObj.toId);
+    if (fromPd && toPd) {
+      const line = createEdgeBetweenPoints(fromPd, toPd);
+      renderedEdges.push(line);
+    }
   });
 }
- 
+
   // odśwież listę w sidebar
   refreshSolarListForLoadedRegion();
 
@@ -608,6 +580,7 @@ if (region.edges) {
     }
   }
 }
+
 
 // === Obsługa przycisku Dodaj punkt ===
 document.getElementById("addPointSolarSystem").addEventListener("click",()=>{
@@ -713,12 +686,6 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
-
-
-
-
-
-
 
 
 
