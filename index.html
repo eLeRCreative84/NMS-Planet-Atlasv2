@@ -169,7 +169,6 @@ const REGIONS_PER_GROUP = 4;      // 4x4 regionów w grupie = 16 regionów (pozi
 const REGIONS_AXIS = GROUPS_PER_AXIS * REGIONS_PER_GROUP; // 16 regions per axis
 
 let renderedPoints = []; // aktualnie wyrenderowane mesh'e w scenie (dla załadowanego regionu)
-let renderedEdges = [];
 let selectedPoint = null; // odnosi się do mesh'a w scenie (jeśli zaznaczony)
 let regions = {}; // { "ix_iz": { pointsData: [ {id,x,y,z,galactic} ] } }
 let uniqueIdCounter = 0;
@@ -179,7 +178,7 @@ let loadedRegionKey = null; // który region jest załadowany do sceny (np. "3_5
 for (let iz = 0; iz < REGIONS_AXIS; iz++) {
   for (let ix = 0; ix < REGIONS_AXIS; ix++) {
     const key = regionIndexKey(ix, iz);
-    regions[key] = { pointsData: [] };
+    regions[key] = { pointsData: [], edges: [] };
   }
 }
 
@@ -250,19 +249,25 @@ function focusCameraOn(pointMesh, baseDistance=200){
   scene.beginAnimation(camera, 0, totalFrames, false);
 }
 
-  //Tworzenie węzłów
- function createEdgeBetweenPoints(pd1, pd2) {
-  // pd1 i pd2 to obiekty z x,y,z
+ // Tworzenie węzłów między dwoma punktami
+function createEdgeBetweenPoints(pd1, pd2) {
+  // pd1 i pd2 to obiekty z x, y, z oraz id
   const points = [
     new BABYLON.Vector3(pd1.x, pd1.y, pd1.z),
     new BABYLON.Vector3(pd2.x, pd2.y, pd2.z)
   ];
-  const line = BABYLON.MeshBuilder.CreateLines(`edge_${pd1.id}_${pd2.id}`, { points, updatable: true }, scene);
+
+  const line = BABYLON.MeshBuilder.CreateLines(`edge_${pd1.id}_${pd2.id}`, {
+    points,
+    updatable: true
+  }, scene);
+
   line.color = new BABYLON.Color3(1, 1, 0); // żółty
   line.isPickable = false; // żeby nie przeszkadzało przy kliku
+
+  // zwracamy mesh, żeby można było przypisać go do regionu
   return line;
-  renderedEdges.push(lineMesh);
-} 
+}
   
 /* === addSolarSystemPoint: teraz dodaje dane do logicznego regionu (regions[key].pointsData)
    i ewentualnie przeładowuje scenę jeśli to ten region jest aktualnie załadowany.
@@ -290,13 +295,12 @@ function addSolarSystemPoint(x,y,z,gal, targetRegionKey=null){
   
 // rysujemy węzeł od zaznaczonego punktu
 if (selectedPoint) {
-  const prevPd = { 
-    x: selectedPoint.position.x, 
-    y: selectedPoint.position.y, 
-    z: selectedPoint.position.z,
-    id: selectedPoint.metadata.id
-  };
-  createEdgeBetweenPoints(prevPd, pd);
+  const prevPd = { x: selectedPoint.position.x, y: selectedPoint.position.y, z: selectedPoint.position.z, id: selectedPoint.metadata.id };
+  const newPd = pd; // nowo dodany punkt
+  const edgeMesh = createEdgeBetweenPoints(prevPd, newPd);
+
+  // dodajemy do regionu aktualnego
+  regions[loadedRegionKey].edges.push({ fromId: prevPd.id, toId: newPd.id, mesh: edgeMesh });
 }
   
   // oznacz kafelek w mapie (jeśli pokazujemy grupę)
@@ -331,7 +335,6 @@ function updateControlsState() {
   }
 }
  
-
 let level = 0; 
 let selectedTile = null;
 let currentGroupX = 0;
@@ -510,19 +513,23 @@ const zInput=document.getElementById("zInput");
 const coordInput=document.getElementById("coordInput");
 
 // === Pomocnicze funkcje do renderowania/zarządzania mesh'ami w scenie ===
-function clearRenderedPoints(){
+function clearRenderedPoints() {
+  // usuń wszystkie punkty z sceny
   renderedPoints.forEach(m => {
     try { m.dispose(); } catch(e){ /* ignore */ }
   });
   renderedPoints = [];
   selectedPoint = null;
 
-    // czyszczenie węzłów
-  renderedEdges.forEach(e => {
-    try { e.dispose(); } catch(e){ }
-  });
-  renderedEdges = [];
+  // usuń wszystkie linie powiązane z aktualnie załadowanym regionem
+  if (loadedRegionKey && regions[loadedRegionKey] && regions[loadedRegionKey].edges) {
+    regions[loadedRegionKey].edges.forEach(edgeObj => {
+      try { edgeObj.mesh.dispose(); } catch(e) { }
+    });
+    regions[loadedRegionKey].edges = [];
+  }
 }
+
 
 function createMeshForPointData(pd) {
   const sphere = BABYLON.MeshBuilder.CreateSphere(`m_${pd.id}`, { diameter: 2 }, scene);
@@ -694,6 +701,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
