@@ -15,6 +15,30 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
 #hud input { width:100px; margin:2px; }
 #hud button { margin:3px; }
 
+/* Ustaw jednolity układ etykiet i inputów */
+#hud .field {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* Etykiety – stała szerokość, wyrównane do prawej */
+#hud label {
+  width: 33%;          /* etykieta zajmuje 1/3 panelu */
+  text-align: left;    /* <-- zmiana z right na left */
+  color: #ccc;
+  font-size: 13px;
+  padding-right: 8px;
+  box-sizing: border-box;
+}
+
+/* Pola wejściowe – wszystkie zaczynają się w tej samej linii */
+#hud input {
+  flex: 1;
+  box-sizing: border-box;
+  text-align: left;
+}
+
 /* regionMap: po prawej górze, 4x4 */
 #regionMap {
   position:absolute; top:10px; right:10px; width:240px; height:240px;
@@ -97,15 +121,27 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
       Y: <input type="number" id="yInput" value="0">
       Z: <input type="number" id="zInput" value="0">
   </div>
-  <div>Galactic: <input type="text" id="coordInput" placeholder="AAAA:BBBB:CCCC:DDDD"></div>
+  
+  <div style="height:0.5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
+  
+	<div class="field">
+	  <label for="coordInput">Koordynaty:</label>
+	  <input id="coordInput" type="text">
+	</div>
+
+	<div class="field">
+	  <label for="nameInput">Nazwa układu:</label>
+	  <input id="nameInput" type="text">
+	</div>
+  
+  <div style="height:0.5px; background:#102b56; margin:0.5rem 0; border-radius:4px;"></div>
   <div>
-    <button id="addPointSolarSystem">Dodaj punkt w regionie</button>
+    <button id="addPointSolarSystem">Dodaj układ</button>
     <button id="zoomToPointSolarSystem">Zoom</button>
     <button id="editPointSolarSystem">Edytuj</button>
     <button id="deletePointSolarSystem">Usuń</button>
   </div>
 </div>
-
 
 <div id="regionMap"></div>
 <div id="regionControls">
@@ -183,7 +219,6 @@ for (let iz = 0; iz < REGIONS_AXIS; iz++) {
   }
 }
 
-
 // Materiały punktów
 const pointMat = new BABYLON.StandardMaterial("pointMat", scene);
 pointMat.emissiveColor = new BABYLON.Color3(0,1,0);
@@ -203,6 +238,41 @@ function regionKeyFromPosition(x,z){
   const clampedX = Math.max(0, Math.min(REGIONS_AXIS-1, ix));
   const clampedZ = Math.max(0, Math.min(REGIONS_AXIS-1, iz));
   return regionIndexKey(clampedX, clampedZ);
+}
+
+// Wprowadzenie koordynatów AAAA:BBBB:CCCC:DDDD
+function galacticToRegionCoords(address) {
+  if (!address || !address.includes(":")) return null;
+  const parts = address.split(":");
+
+  if (parts.length !== 4) return null;
+
+  const [A_str, B_str, C_str, D_str] = parts;
+
+  // konwertujemy tylko B,C,D na liczby
+  const B = parseInt(B_str, 16);
+  const C = parseInt(C_str, 16);
+  const D = parseInt(D_str, 16);
+
+  if ([B,C,D].some(isNaN)) return null;
+
+  // Normalizacja: 0–65535 → 0–REGION_WIDTH / REGION_DEPTH / REGION_HEIGHT
+  const normX = (C / 65535) * REGION_WIDTH;
+  const normZ = (D / 65535) * REGION_DEPTH;
+  const normY = (B / 65535) * REGION_HEIGHT;
+
+  // Wskaż region (16x16)
+  const ix = Math.floor((C / 65535) * REGIONS_AXIS);
+  const iz = Math.floor((D / 65535) * REGIONS_AXIS);
+  const regionKey = regionIndexKey(ix, iz);
+
+  return {
+    x: normX,
+    y: normY,
+    z: normZ,
+    regionKey,
+    AAAA: A_str  // <-- przechowujemy jako string
+  };
 }
 
 // === Kamera na punkt ===
@@ -284,7 +354,8 @@ function addSolarSystemPoint(x, y, z, gal, targetRegionKey = null) {
   if (!regions[key]) regions[key] = { pointsData: [], edges: [] };
 
   const id = `pt_${uniqueIdCounter++}`;
-  const pd = { id, x, y, z, galactic: gal || "" };
+  const pd = { id, x, y, z, galactic: gal || "", name: nameInput.value.trim() || "" };
+
   regions[key].pointsData.push(pd);
 
   // rysujemy węzeł od zaznaczonego punktu, tylko jeśli istnieje zaznaczony w tym regionie
@@ -312,16 +383,12 @@ function addSolarSystemPoint(x, y, z, gal, targetRegionKey = null) {
   if (loadedRegionKey === key) {
     loadRegionByKey(key, { selectId: id });
   }
-
   return id;
 }
 
-
-
-
 /* ==============================
-   --- TUTAJ DOPISUJEMY SIATKĘ ---
-   ============================== */
+--- TUTAJ DOPISUJEMY SIATKĘ ---
+ ============================== */
 
 const regionMapEl = document.getElementById("regionMap");
 const enterBtn = document.getElementById("enterGroup");
@@ -478,7 +545,7 @@ function refreshSolarListForLoadedRegion() {
   region.pointsData.forEach(pd => {
     const item = document.createElement("div");
     item.className = "solarItem";
-    item.textContent = pd.galactic || `Układ ${pd.id}`;
+    item.textContent = pd.name || pd.galactic || `Układ ${pd.id}`;
     item.dataset.id = pd.id;
     item.addEventListener("click", () => {
       // usuwamy zaznaczenie poprzedniego
@@ -517,6 +584,26 @@ const xInput=document.getElementById("xInput");
 const yInput=document.getElementById("yInput");
 const zInput=document.getElementById("zInput");
 const coordInput=document.getElementById("coordInput");
+const nameInput=document.getElementById("nameInput");
+
+
+// --- WALIDACJA GALACTIC ---
+coordInput.addEventListener("input", () => {
+  // zamień na wielkie litery
+  coordInput.value = coordInput.value.toUpperCase();
+
+  const val = coordInput.value.trim();
+
+  // regex: 4x hex + ":" + 4x hex + ":" + 4x hex + ":" + 4x hex
+  const galacticRegex = /^[0-9A-F]{4}:[0-9A-F]{4}:[0-9A-F]{4}:[0-9A-F]{4}$/;
+
+  if (galacticRegex.test(val)) {
+    coordInput.style.borderColor = "#0f0"; // zielony – poprawny
+  } else {
+    coordInput.style.borderColor = "#f00"; // czerwony – niepoprawny
+  }
+});
+
 
 // === Pomocnicze funkcje do renderowania/zarządzania mesh'ami w scenie ===
 function clearRenderedPoints(){
@@ -537,7 +624,7 @@ function createMeshForPointData(pd) {
   const sphere = BABYLON.MeshBuilder.CreateSphere(`m_${pd.id}`, { diameter: 2 }, scene);
   sphere.position.set(pd.x, pd.y, pd.z);
   sphere.material = pointMat.clone();
-  sphere.metadata = { id: pd.id, galactic: pd.galactic };
+  sphere.metadata = { id: pd.id, galactic: pd.galactic, name: pd.name || "" };
   sphere.actionManager = new BABYLON.ActionManager(scene);
   sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,()=>{
     if(selectedPoint) selectedPoint.material = pointMat.clone();
@@ -546,6 +633,8 @@ function createMeshForPointData(pd) {
     document.getElementById("yInput").value = sphere.position.y.toFixed(2);
     document.getElementById("zInput").value = sphere.position.z.toFixed(2);
     document.getElementById("coordInput").value = sphere.metadata.galactic || "";
+	document.getElementById("nameInput").value = sphere.metadata.name || "";
+
     // highlight corresponding item in list
     document.querySelectorAll(".solarItem").forEach(el => el.classList.remove("selected"));
     const li = solarListEl.querySelector(`[data-id="${pd.id}"]`);
@@ -610,6 +699,8 @@ function loadRegionByKey(regionKey, options = {}) {
 		yInput.value = mesh.position.y.toFixed(2);
 		zInput.value = mesh.position.z.toFixed(2);
 		coordInput.value = mesh.metadata.galactic || "";
+		nameInput.value = mesh.metadata.name || "";
+
 		// highlight item
 		const li = solarListEl.querySelector(`[data-id="${selectId}"]`);
 		if (li) {
@@ -623,63 +714,58 @@ function loadRegionByKey(regionKey, options = {}) {
 
 
 // === Obsługa przycisku Dodaj punkt ===
-document.getElementById("addPointSolarSystem").addEventListener("click",()=>{
+document.getElementById("addPointSolarSystem").addEventListener("click", () => {
   const gal = coordInput.value.trim();
-  let x = parseFloat(xInput.value);
-  let y = parseFloat(yInput.value);
-  let z = parseFloat(zInput.value);
 
   // === PRZYPADEK 1: Koordynaty Galactic są wypełnione ===
-  if (gal && gal.includes(":")) {
-    // Przykładowy format: AAAA:BBBB:CCCC:DDDD
-    // Mapa galactic -> wybór regionu (uproszczona)
-    const parts = gal.split(":").map(p => parseInt(p,16) || 0);
-    const gx = parts[2] % REGIONS_AXIS;
-    const gz = parts[3] % REGIONS_AXIS;
-    const regionKey = regionIndexKey(gx, gz);
+  if (gal) {
+    const galData = galacticToRegionCoords(gal);
+    if (!galData) {
+      alert("Niepoprawny adres Galactic! Wprowadź w formacie AAAA:BBBB:CCCC:DDDD");
+      return;
+    }
 
-    // jeśli użytkownik nie podał X/Z, tworzymy w środku regionu
-    if (isNaN(x)) x = REGION_WIDTH/2;
-    if (isNaN(z)) z = REGION_DEPTH/2;
-    if (isNaN(y)) y = REGION_HEIGHT/2;
+    // użyjemy normalizacji X/Y/Z z galacticToRegionCoords
+    let { x, y, z, regionKey } = galData;
 
-    const newId = addSolarSystemPoint(x,y,z,gal, regionKey);
-    // jeśli mamy teraz załadowany ten region -> reload i select
+    // jeśli user nie podał inputów XYZ ręcznie, ustawiamy środek regionu
+    if (isNaN(parseFloat(xInput.value))) x = REGION_WIDTH / 2;
+    if (isNaN(parseFloat(yInput.value))) y = REGION_HEIGHT / 2;
+    if (isNaN(parseFloat(zInput.value))) z = REGION_DEPTH / 2;
+
+    const newId = addSolarSystemPoint(x, y, z, gal, regionKey);
+
     if (loadedRegionKey === regionKey) {
       loadRegionByKey(regionKey, { selectId: newId });
     } else {
-      // zaznacz kafelek hasPoints (jeśli jesteśmy w widoku grupy)
       markRegionTileHasPoints(regionKey);
     }
-    return;
+
+    return; // wychodzimy, nie przechodzimy do trybu ręcznego
   }
 
-  // === PRZYPADEK 2: Użytkownik dodaje ręcznie (brak Galactic) ===
-  // Musi być wybrany region (czyli jesteśmy na poziomie grupy)
+  // === PRZYPADEK 2: ręczne dodawanie punktu ===
   if (level !== 1 || !selectedTile || !selectedTile.dataset.ix) {
     alert("Wybierz region z mapy, zanim dodasz punkt ręcznie.");
     return;
   }
 
-  // obliczamy klucz regionu względem wybranego kafelka
   const ix = parseInt(selectedTile.dataset.ix);
   const iz = parseInt(selectedTile.dataset.iz);
   const regionKey = regionIndexKey(ix, iz);
 
-  // jeśli użytkownik nie podał współrzędnych X/Z, tworzymy w środku regionu (0..REGION_WIDTH)
-  if (isNaN(x)) x = REGION_WIDTH/2;
-  if (isNaN(z)) z = REGION_DEPTH/2;
-  if (isNaN(y)) y = REGION_HEIGHT/2;
+  let x = isNaN(parseFloat(xInput.value)) ? REGION_WIDTH / 2 : parseFloat(xInput.value);
+  let y = isNaN(parseFloat(yInput.value)) ? REGION_HEIGHT / 2 : parseFloat(yInput.value);
+  let z = isNaN(parseFloat(zInput.value)) ? REGION_DEPTH / 2 : parseFloat(zInput.value);
 
   const newId = addSolarSystemPoint(x, y, z, "", regionKey);
-  // przeładuj bieżący region i zaznacz nowy punkt
   if (loadedRegionKey === regionKey) {
     loadRegionByKey(regionKey, { selectId: newId });
   } else {
-    // jeśli dodano punkt do regionu, który nie jest załadowany - oznacz kafelek
     markRegionTileHasPoints(regionKey);
   }
 });
+
 
 document.getElementById("zoomToPointSolarSystem").addEventListener("click",()=>{ if(selectedPoint) focusCameraOn(selectedPoint); });
 
@@ -695,10 +781,12 @@ document.getElementById("editPointSolarSystem").addEventListener("click",()=>{
   entry.y = parseFloat(yInput.value);
   entry.z = parseFloat(zInput.value);
   entry.galactic = coordInput.value.trim();
+  entry.name = nameInput.value.trim();
 
   // zaktualizuj mesh
   selectedPoint.position.set(entry.x, entry.y, entry.z);
   selectedPoint.metadata.galactic = entry.galactic;
+  selectedPoint.metadata.name = entry.name;
 
   // odśwież listę
   refreshSolarListForLoadedRegion();
