@@ -169,6 +169,7 @@ const REGIONS_PER_GROUP = 4;      // 4x4 regionów w grupie = 16 regionów (pozi
 const REGIONS_AXIS = GROUPS_PER_AXIS * REGIONS_PER_GROUP; // 16 regions per axis
 
 let renderedPoints = []; // aktualnie wyrenderowane mesh'e w scenie (dla załadowanego regionu)
+let renderedEdges = [];
 let selectedPoint = null; // odnosi się do mesh'a w scenie (jeśli zaznaczony)
 let regions = {}; // { "ix_iz": { pointsData: [ {id,x,y,z,galactic} ] } }
 let uniqueIdCounter = 0;
@@ -260,6 +261,7 @@ function focusCameraOn(pointMesh, baseDistance=200){
   line.color = new BABYLON.Color3(1, 1, 0); // żółty
   line.isPickable = false; // żeby nie przeszkadzało przy kliku
   return line;
+  renderedEdges.push(lineMesh);
 } 
   
 /* === addSolarSystemPoint: teraz dodaje dane do logicznego regionu (regions[key].pointsData)
@@ -514,6 +516,12 @@ function clearRenderedPoints(){
   });
   renderedPoints = [];
   selectedPoint = null;
+
+    // czyszczenie węzłów
+  renderedEdges.forEach(e => {
+    try { e.dispose(); } catch(e){ }
+  });
+  renderedEdges = [];
 }
 
 function createMeshForPointData(pd) {
@@ -686,6 +694,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
