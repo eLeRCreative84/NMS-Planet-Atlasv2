@@ -295,12 +295,17 @@ function addSolarSystemPoint(x,y,z,gal, targetRegionKey=null){
   
 // rysujemy węzeł od zaznaczonego punktu
 if (selectedPoint) {
-  const prevPd = { x: selectedPoint.position.x, y: selectedPoint.position.y, z: selectedPoint.position.z, id: selectedPoint.metadata.id };
+  const prevPd = { 
+    x: selectedPoint.position.x, 
+    y: selectedPoint.position.y, 
+    z: selectedPoint.position.z, 
+    id: selectedPoint.metadata.id 
+  };
   const newPd = pd; // nowo dodany punkt
   const edgeMesh = createEdgeBetweenPoints(prevPd, newPd);
 
-  // dodajemy do regionu aktualnego
-  regions[loadedRegionKey].edges.push({ fromId: prevPd.id, toId: newPd.id, mesh: edgeMesh });
+  // dodajemy do regionu, w którym znajduje się nowy punkt
+  regions[key].edges.push({ fromId: prevPd.id, toId: newPd.id, mesh: edgeMesh });
 }
   
   // oznacz kafelek w mapie (jeśli pokazujemy grupę)
@@ -571,6 +576,13 @@ function loadRegionByKey(regionKey, options = {}) {
     renderedPoints.push(mesh);
   });
 
+// renderujemy istniejące węzły w regionie
+if (region.edges) {
+  region.edges.forEach(edgeObj => {
+    scene.addMesh(edgeObj.mesh);
+  });
+}
+ 
   // odśwież listę w sidebar
   refreshSolarListForLoadedRegion();
 
@@ -701,6 +713,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
