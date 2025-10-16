@@ -249,6 +249,19 @@ function focusCameraOn(pointMesh, baseDistance=200){
   scene.beginAnimation(camera, 0, totalFrames, false);
 }
 
+  //Tworzenie węzłów
+ function createEdgeBetweenPoints(pd1, pd2) {
+  // pd1 i pd2 to obiekty z x,y,z
+  const points = [
+    new BABYLON.Vector3(pd1.x, pd1.y, pd1.z),
+    new BABYLON.Vector3(pd2.x, pd2.y, pd2.z)
+  ];
+  const line = BABYLON.MeshBuilder.CreateLines(`edge_${pd1.id}_${pd2.id}`, { points, updatable: true }, scene);
+  line.color = new BABYLON.Color3(1, 1, 0); // żółty
+  line.isPickable = false; // żeby nie przeszkadzało przy kliku
+  return line;
+} 
+  
 /* === addSolarSystemPoint: teraz dodaje dane do logicznego regionu (regions[key].pointsData)
    i ewentualnie przeładowuje scenę jeśli to ten region jest aktualnie załadowany.
 */
@@ -272,7 +285,18 @@ function addSolarSystemPoint(x,y,z,gal, targetRegionKey=null){
   const id = `pt_${uniqueIdCounter++}`;
   const pd = { id, x, y, z, galactic: gal || "" };
   regions[key].pointsData.push(pd);
-
+  
+// rysujemy węzeł od zaznaczonego punktu
+if (selectedPoint) {
+  const prevPd = { 
+    x: selectedPoint.position.x, 
+    y: selectedPoint.position.y, 
+    z: selectedPoint.position.z,
+    id: selectedPoint.metadata.id
+  };
+  createEdgeBetweenPoints(prevPd, pd);
+}
+  
   // oznacz kafelek w mapie (jeśli pokazujemy grupę)
   markRegionTileHasPoints(key);
 
@@ -662,6 +686,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
