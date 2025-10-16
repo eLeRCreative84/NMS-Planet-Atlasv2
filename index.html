@@ -309,6 +309,11 @@ function drawGroupGrid(groupX, groupZ){
       tile.className = "regionTile";
       const regionX = groupX * REGIONS_PER_GROUP + rx;
       const regionZ = groupZ * REGIONS_PER_GROUP + rz;
+
+      // numeracja od 1 do 256 (tylko wizualna)
+      const regionNumber = regionZ * REGIONS_AXIS + regionX + 1;
+      tile.textContent = regionNumber;
+      
       tile.dataset.ix = regionX;
       tile.dataset.iz = regionZ;
       tile.textContent = `${regionX}_${regionZ}`;
@@ -603,6 +608,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
