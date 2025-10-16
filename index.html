@@ -316,7 +316,7 @@ function drawGroupGrid(groupX, groupZ){
       
       tile.dataset.ix = regionX;
       tile.dataset.iz = regionZ;
-      tile.textContent = `${regionX}_${regionZ}`;
+      
       // pokaż czy region ma punkty
       const key = regionIndexKey(regionX, regionZ);
       if (regions[key] && regions[key].pointsData && regions[key].pointsData.length>0) {
@@ -608,6 +608,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
