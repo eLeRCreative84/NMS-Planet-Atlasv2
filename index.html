@@ -204,14 +204,44 @@ function regionKeyFromPosition(x,z){
 }
 
 // === Kamera na punkt ===
-function focusCameraOn(pointMesh,distance=200){
-  // Płynne przesunięcie kamery, target to pozycja punktu
-  if(!pointMesh) return;
+function focusCameraOn(pointMesh, distance = 200) {
+  if (!pointMesh) return;
+
   const target = pointMesh.position.clone();
-  const dir = camera.position.subtract(camera.target || new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2)).normalize().scale(distance);
+  const dir = camera.position.subtract(camera.target || new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2))
+               .normalize()
+               .scale(distance);
   const newPos = target.add(dir);
-  BABYLON.Animation.CreateAndStartAnimation("camMove",camera,"position",60,60,camera.position.clone(),newPos,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
-  BABYLON.Animation.CreateAndStartAnimation("camTarget",camera,"target",60,60,camera.target ? camera.target.clone() : new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2),target,BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+
+  // policz dystans i dopasuj długość animacji
+  const dist = BABYLON.Vector3.Distance(camera.position, newPos);
+  const frameCount = Math.min(120, Math.max(30, dist / 20)); // im dalej, tym dłuższy lot
+
+  // animacja pozycji kamery z easingiem
+  const posAnim = new BABYLON.Animation("camMoveSmooth", "position", 60,
+    BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+  posAnim.setKeys([
+    { frame: 0, value: camera.position.clone() },
+    { frame: frameCount, value: newPos }
+  ]);
+
+  // easing – bardzo miękki ease-in-out
+  const easing = new BABYLON.CubicEase();
+  easing.setEasingMode(BABYLON.EasingFunction.EASINGMODE_EASEINOUT);
+  posAnim.setEasingFunction(easing);
+
+  // animacja celu kamery
+  const targetAnim = new BABYLON.Animation("camTargetSmooth", "target", 60,
+    BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+  targetAnim.setKeys([
+    { frame: 0, value: camera.target.clone() },
+    { frame: frameCount, value: target }
+  ]);
+  targetAnim.setEasingFunction(easing);
+
+  // przypisz i uruchom
+  camera.animations = [posAnim, targetAnim];
+  scene.beginAnimation(camera, 0, frameCount, false);
 }
 
 /* === addSolarSystemPoint: teraz dodaje dane do logicznego regionu (regions[key].pointsData)
@@ -627,6 +657,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
