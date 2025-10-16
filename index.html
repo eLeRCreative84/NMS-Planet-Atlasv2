@@ -34,6 +34,10 @@ body { margin:0; overflow:hidden; background:black; font-family:sans-serif; }
 #regionControls { position:absolute; top:260px; right:10px; display:flex; gap:6px; }
 #regionControls button { padding:6px 8px; }
 
+  #regionControls button:disabled {
+  opacity: 0.4;
+  }
+
 .regionTile.hasPoints {
   outline: 2px solid rgba(255, 230, 0, 0.8);
   box-shadow: 0 0 6px rgba(255, 230, 0, 0.5);
@@ -254,6 +258,18 @@ const enterBtn = document.getElementById("enterGroup");
 const exitBtn = document.getElementById("exitGroup");
 const groupNameLabel = document.getElementById("groupNameLabel");
 
+function updateControlsState() {
+  if (level === 0) {
+    // na poziomie galaktyki: można wejść, ale nie można wyjść
+    enterBtn.disabled = false;
+    exitBtn.disabled = true;
+  } else if (level === 1) {
+    // na poziomie grupy: można wyjść, ale nie można dalej wchodzić
+    enterBtn.disabled = true;
+    exitBtn.disabled = false;
+  }
+}
+ 
 
 let level = 0; 
 let selectedTile = null;
@@ -351,6 +367,7 @@ enterBtn.addEventListener("click", ()=>{
   const groupIndex = gz * GROUPS_PER_AXIS + gx + 1;
   groupNameLabel.textContent = `Grupa regionów ${groupIndex}`;
   drawGroupGrid(currentGroupX, currentGroupZ);
+  updateControlsState();
 
   // === Po wejściu do grupy, ustaw kamerę nad środkiem obszaru
   camera.setTarget(new BABYLON.Vector3(REGION_WIDTH/2, REGION_HEIGHT/2, REGION_DEPTH/2));
@@ -369,6 +386,7 @@ exitBtn.addEventListener("click", ()=>{
   groupNameLabel.textContent = "";
   // czyścimy załadowany region ze sceny (jeśli chcesz, możesz zostawić)
   clearRenderedPoints();
+  updateControlsState();
   loadedRegionKey = null;
 });
 
@@ -608,6 +626,7 @@ window.addEventListener("resize",()=>engine.resize());
 </script>
 </body>
 </html>
+
 
 
 
