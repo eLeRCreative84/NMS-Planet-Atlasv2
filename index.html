@@ -531,6 +531,36 @@ exitBtn.addEventListener("click", ()=>{
 drawGalaxyGrid();
 groupNameLabel.textContent = "";
 
+
+// Funkcja aktualizuje kafelki grup (poziom galaktyki) pod kątem obecności punktów w regionach
+function updateGalaxyTilesHasPoints() {
+  if(level !== 0) return; // tylko dla poziomu galaktyki
+  const tiles = regionMapEl.querySelectorAll(".regionTile");
+  tiles.forEach(tile => {
+    const gx = parseInt(tile.dataset.gx, 10);
+    const gz = parseInt(tile.dataset.gz, 10);
+    let hasPoints = false;
+
+    // sprawdzamy 4x4 regiony w tej grupie
+    for(let rz = 0; rz < REGIONS_PER_GROUP; rz++) {
+      for(let rx = 0; rx < REGIONS_PER_GROUP; rx++) {
+        const regionX = gx * REGIONS_PER_GROUP + rx;
+        const regionZ = gz * REGIONS_PER_GROUP + rz;
+        const key = regionIndexKey(regionX, regionZ);
+        if(regions[key] && regions[key].pointsData && regions[key].pointsData.length > 0) {
+          hasPoints = true;
+          break;
+        }
+      }
+      if(hasPoints) break;
+    }
+
+    if(hasPoints) tile.classList.add("hasPoints");
+    else tile.classList.remove("hasPoints");
+  });
+}
+
+
 /* ===============================
    SIDEBAR – lista układów
    =============================== */
@@ -741,6 +771,11 @@ document.getElementById("addPointSolarSystem").addEventListener("click", () => {
       markRegionTileHasPoints(regionKey);
     }
 
+	// nowo dodane – aktualizacja kafelków grupy
+	if (level === 0) {
+	  updateGalaxyTilesHasPoints();
+	}
+
     return; // wychodzimy, nie przechodzimy do trybu ręcznego
   }
 
@@ -764,6 +799,11 @@ document.getElementById("addPointSolarSystem").addEventListener("click", () => {
   } else {
     markRegionTileHasPoints(regionKey);
   }
+  
+  if (level === 0) {
+  updateGalaxyTilesHasPoints();
+}
+
 });
 
 
@@ -806,6 +846,7 @@ document.getElementById("deletePointSolarSystem").addEventListener("click",()=>{
 
   // odznacz kafelek jeśli region jest teraz pusty
   markRegionTileHasPoints(loadedRegionKey);
+  if(level === 0) updateGalaxyTilesHasPoints();
 });
 
 // === Render ===
